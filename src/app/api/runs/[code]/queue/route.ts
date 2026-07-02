@@ -48,6 +48,11 @@ export async function POST(
   } = await supabase.auth.getUser();
   const userId = user?.id ?? null;
 
+  // host_add lets the host add an arbitrary player by name — only the host may do this
+  if (result.data.mode === "host_add" && userId !== run.hostId) {
+    return apiError("FORBIDDEN", "Only the host can add players", 403);
+  }
+
   const { entry, position } = await joinQueue(run.id, result.data.displayName, userId);
 
   return apiSuccess({ ...entry, position }, 201);
