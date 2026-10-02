@@ -11,7 +11,7 @@ export async function signIn(
 
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const next = (formData.get("next") as string) || "/";
+  const next = (formData.get("next") as string) || "/dashboard";
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -29,11 +29,12 @@ export async function signUp(
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const displayName = (formData.get("displayName") as string).trim();
+  const intent = formData.get("intent") as string | null;
 
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { displayName } },
+    options: { data: { displayName, ...(intent === "host" ? { hostIntent: true } : {}) } },
   });
 
   if (error) return { error: error.message };
@@ -45,7 +46,7 @@ export async function signUp(
     redirect(`/signup/confirm?email=${encodeURIComponent(email)}`);
   }
 
-  redirect("/");
+  redirect(intent === "host" ? "/dashboard?intent=host" : "/dashboard");
 }
 
 export async function signOut(): Promise<void> {

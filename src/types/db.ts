@@ -1,5 +1,6 @@
 import type {
   users,
+  hostRequests,
   runs,
   queueEntries,
   games,
@@ -9,6 +10,9 @@ import type {
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+
+export type HostRequest = typeof hostRequests.$inferSelect;
+export type NewHostRequest = typeof hostRequests.$inferInsert;
 
 export type Run = typeof runs.$inferSelect;
 export type NewRun = typeof runs.$inferInsert;

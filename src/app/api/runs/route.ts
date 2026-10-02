@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createRunSchema } from "@/validators";
 import { createRun, getRunsForUser, getActiveRunByHostId } from "@/services/run.service";
+import { getHostStatus } from "@/services/host-request.service";
 import { apiSuccess, apiError } from "@/lib/api/response";
 
 export async function GET() {
@@ -28,6 +29,11 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) {
     return apiError("UNAUTHORIZED", "Unauthorized", 401);
+  }
+
+  const status = await getHostStatus(user.id);
+  if (status !== "approved") {
+    return apiError("HOST_NOT_APPROVED", "Hosting requires an approved request", 403);
   }
 
   const existingRun = await getActiveRunByHostId(user.id);

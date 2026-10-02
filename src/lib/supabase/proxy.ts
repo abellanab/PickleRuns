@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 
-const PROTECTED_ROUTES = ["/create-run", "/history", "/account"];
+const PROTECTED_ROUTES = ["/create-run", "/history", "/account", "/dashboard"];
 const AUTH_ROUTES = ["/login", "/signup"];
 
 export async function updateSession(request: NextRequest) {
@@ -53,7 +53,7 @@ export async function updateSession(request: NextRequest) {
 
   if (isAuthRoute && user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/dashboard";
     url.searchParams.delete("next");
     return NextResponse.redirect(url);
   }

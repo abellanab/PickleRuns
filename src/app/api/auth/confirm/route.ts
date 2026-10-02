@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { welcomeUserOnce } from "@/services/email.service";
+import { ensureHostRequest } from "@/services/host-request.service";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -30,6 +31,15 @@ export async function GET(request: Request) {
           });
         } catch (err) {
           console.error("Welcome email failed", err);
+        }
+      }
+      // Sign-up-with-host-intent: the session now exists and public.users is
+      // trigger-created, so the FK is satisfiable. Log-only, must not block redirect.
+      if (user?.user_metadata?.hostIntent) {
+        try {
+          await ensureHostRequest(user.id);
+        } catch (err) {
+          console.error("Host request auto-create failed", err);
         }
       }
       return NextResponse.redirect(`${origin}${safeNext}`);

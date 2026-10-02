@@ -1,5 +1,7 @@
 export * from "./enums";
 export * from "./users";
+export * from "./host-requests";
+export * from "./invites";
 export * from "./runs";
 export * from "./queue-entries";
 export * from "./games";

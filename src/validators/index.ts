@@ -21,3 +21,8 @@ export {
   scorePointSchema,
   type ScorePointInput,
 } from "./score.validator";
+
+export {
+  inviteTokenSchema,
+  type InviteTokenInput,
+} from "./invite.validator";

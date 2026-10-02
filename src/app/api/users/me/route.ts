@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getHostStatus } from "@/services/host-request.service";
 import { apiSuccess, apiError } from "@/lib/api/response";
 
 // GET   /api/users/me — fetch authenticated user profile
@@ -14,6 +15,7 @@ export async function GET(): Promise<Response> {
     id: user.id,
     email: user.email ?? null,
     displayName: (user.user_metadata?.displayName as string | undefined) ?? null,
+    hostStatus: await getHostStatus(user.id),
   });
 }
 

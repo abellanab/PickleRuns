@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const joinRunSchema = z.object({
   displayName: z.string().min(1).max(50).transform((s) => s.trim()),
+  mode: z.enum(["self_join", "host_add"]).default("self_join"),
 });
 
 export type JoinRunInput = z.infer<typeof joinRunSchema>;

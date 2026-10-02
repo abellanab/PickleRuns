@@ -143,4 +143,29 @@
   .animate-slide-up {
     animation: slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1);
   }
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-100%); }
+  }
+
+  .animate-marquee {
+    animation: marquee 26s linear infinite;
+  }
+
+  @keyframes float-soft {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+  }
+
+  .animate-float-soft {
+    animation: float-soft 5s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee,
+    .animate-float-soft {
+      animation: none;
+    }
+  }
 }

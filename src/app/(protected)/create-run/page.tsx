@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/ui/topbar";
 import { Button } from "@/components/ui/button";
 import { cn, generateRunCode } from "@/lib/utils";
 import { useCreateRunMutation } from "@/hooks/use-run";
+import { useHostStatus } from "@/hooks/use-host-request";
 
 type Format = "winner_stays" | "new_ten";
 type PointSystem = "one_two" | "two_three";
@@ -22,6 +23,13 @@ const SCORE_MAX = 50;
 
 export default function CreateRunPage() {
   const router = useRouter();
+  const { data: hostStatus, isLoading: hostStatusLoading } = useHostStatus();
+
+  useEffect(() => {
+    if (!hostStatusLoading && hostStatus !== "approved") {
+      router.replace("/dashboard");
+    }
+  }, [hostStatusLoading, hostStatus, router]);
 
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
@@ -78,6 +86,10 @@ export default function CreateRunPage() {
       </svg>
     </button>
   );
+
+  if (hostStatusLoading || hostStatus !== "approved") {
+    return <div className="app-shell h-[100dvh] flex items-center justify-center" />;
+  }
 
   return (
     <div className="app-shell h-[100dvh] overflow-hidden flex flex-col">

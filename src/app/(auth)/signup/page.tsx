@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { Suspense, useActionState, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,13 +19,7 @@ function GoogleIcon() {
   );
 }
 
-export default function SignupPage() {
-  const [state, formAction, isPending] = useActionState(
-    async (_prev: { error: string } | null, formData: FormData) => signUp(_prev, formData),
-    null,
-  );
-  const [showPassword, setShowPassword] = useState(false);
-
+function SignupChrome({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell px-5 overflow-y-auto">
       <div className="pt-4 flex items-center">
@@ -46,7 +41,29 @@ export default function SignupPage() {
         </Link>
         <div className="w-12 h-0.5 bg-accent rounded-sm mt-2" />
       </div>
+      {children}
+    </div>
+  );
+}
 
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<SignupChrome>{null}</SignupChrome>}>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
+  const [state, formAction, isPending] = useActionState(
+    async (_prev: { error: string } | null, formData: FormData) => signUp(_prev, formData),
+    null,
+  );
+  const [showPassword, setShowPassword] = useState(false);
+  const intent = useSearchParams().get("intent") ?? "";
+
+  return (
+    <SignupChrome>
       <div className="flex-1 flex flex-col justify-end pb-12">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-1 animate-fade-up">
@@ -54,7 +71,7 @@ export default function SignupPage() {
               Create Account
             </h2>
             <p className="font-display text-[13px] font-bold tracking-[0.1em] uppercase text-text-muted">
-              Get in the queue.
+              Run your own court.
             </p>
           </div>
 
@@ -81,6 +98,7 @@ export default function SignupPage() {
           </div>
 
           <form action={formAction} className="flex flex-col gap-4">
+            <input type="hidden" name="intent" value={intent} />
             <div className="flex flex-col gap-1.5 animate-fade-up" style={{ animationDelay: "0.14s" }}>
               <label className="font-display text-[11px] font-bold tracking-[0.14em] uppercase text-text-muted pl-[2px]">
                 Display Name
@@ -190,6 +208,6 @@ export default function SignupPage() {
           </div>
         </div>
       </div>
-    </div>
+    </SignupChrome>
   );
 }

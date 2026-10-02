@@ -62,7 +62,7 @@ export default function LobbyPage() {
       <SessionTopbar
         run={run}
         loading={loading}
-        exitHref={!loading && userId !== null ? "/" : undefined}
+        exitHref={!loading && userId !== null ? "/dashboard" : undefined}
         showEndRun={canManageRun}
         liveGameWarning={!!activeGame}
         badge={activeGame ? (

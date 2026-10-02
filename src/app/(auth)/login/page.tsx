@@ -22,7 +22,7 @@ function GoogleIcon() {
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/";
+  const next = searchParams.get("next") || "/dashboard";
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error: string } | null, formData: FormData) => signIn(_prev, formData),
     null,
@@ -156,21 +156,6 @@ function LoginForm() {
               {isPending ? "Signing in…" : "Sign In"}
             </Button>
           </form>
-
-          <div
-            className="flex items-center justify-center gap-1.5 pt-1 animate-fade-up"
-            style={{ animationDelay: "0.26s" }}
-          >
-            <span className="font-body text-[13px] text-text-muted">
-              Don&apos;t have an account?
-            </span>
-            <Link
-              href="/signup"
-              className="font-body text-[13px] font-semibold text-text-secondary underline underline-offset-2 decoration-border transition-colors hover:text-text-primary"
-            >
-              Sign up
-            </Link>
-          </div>
         </div>
       </div>
     </div>

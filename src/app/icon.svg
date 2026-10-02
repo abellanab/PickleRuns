@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none" role="img" aria-label="BallRuns">
+  <rect width="32" height="32" rx="7" fill="#c8f135"/>
+  <g transform="translate(5.28 5.28) scale(0.893)" stroke="#0e0f0c" stroke-width="1.8" stroke-linecap="round">
+    <circle cx="12" cy="12" r="9"/>
+    <path d="M12 3v18"/>
+    <path d="M5.6 5.2c3 2.4 3 11.2 0 13.6"/>
+    <path d="M18.4 5.2c-3 2.4-3 11.2 0 13.6"/>
+  </g>
+</svg>

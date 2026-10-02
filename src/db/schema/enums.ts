@@ -29,3 +29,9 @@ export const queueEntryStatus = pgEnum("queue_entry_status", [
   "marked_out",
   "removed",
 ]);
+
+export const hostRequestStatus = pgEnum("host_request_status", [
+  "pending",
+  "approved",
+  "denied",
+]);

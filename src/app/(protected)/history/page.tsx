@@ -76,7 +76,7 @@ export default function HistoryPage() {
       <div className="topbar">
         <div className="flex items-center gap-3">
           <Link
-            href="/"
+            href="/dashboard"
             className="w-9 h-9 flex items-center justify-center rounded-sm border border-border bg-bg-surface text-text-secondary transition-all hover:border-accent-dim hover:text-accent hover:bg-accent-glow"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
