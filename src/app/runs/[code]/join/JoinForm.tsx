@@ -74,7 +74,7 @@ export default function JoinForm({ runCode, runName, currentUser }: JoinFormProp
   const [name, setName] = useState(currentUser?.displayName ?? "");
   const [error, setError] = useState("");
   const [joined, setJoined] = useState<{ displayName: string; position: number } | null>(null);
-  const addEntry = useAddQueueEntryMutation(runCode);
+  const addEntry = useAddQueueEntryMutation(runCode, "self_join");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

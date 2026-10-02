@@ -51,7 +51,7 @@ export default function QueuePage() {
   useQueueRealtime(run?.id ?? null, invalidateQueue);
 
   const statusMutation = useUpdateQueueStatusMutation(code);
-  const addPlayerMutation = useAddQueueEntryMutation(code);
+  const addPlayerMutation = useAddQueueEntryMutation(code, "host_add");
 
   const adding = addPlayerMutation.isPending;
 

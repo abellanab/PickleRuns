@@ -74,11 +74,14 @@ export function useUpdateQueuePaidMutation(code: string) {
   });
 }
 
-export function useAddQueueEntryMutation(code: string) {
+export function useAddQueueEntryMutation(
+  code: string,
+  mode: "self_join" | "host_add" = "self_join",
+) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (displayName: string) =>
-      apiPost<{ position: number }>(`/api/runs/${code}/queue`, { displayName }),
+      apiPost<{ position: number }>(`/api/runs/${code}/queue`, { displayName, mode }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["queue", code] });
     },
