@@ -127,11 +127,10 @@ export default function HomeClient({ initialUser }: HomeClientProps) {
                 >
                   <DropdownMenu.Item asChild>
                     <button
-                      onClick={() => signOut()}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-bold tracking-[0.06em] uppercase text-[#ff4040] hover:bg-[#ff4040]/10 outline-none cursor-pointer transition-colors"
+                      onClick={() => router.push("/account")}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-bold tracking-[0.06em] uppercase text-text-primary hover:bg-bg-hover outline-none cursor-pointer transition-colors"
                     >
-                      <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
-                      Sign Out
+                      Account
                     </button>
                   </DropdownMenu.Item>
                 </DropdownMenu.Content>
