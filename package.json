@@ -8,6 +8,8 @@
     "db:migrate": "node tools/run-pg-migrate.mjs up",
     "db:migrate:down": "node tools/run-pg-migrate.mjs down",
     "db:migrate:create": "node tools/run-pg-migrate.mjs create",
+    "db:baseline:generate": "node tools/make-baseline.mjs",
+    "db:baseline:apply": "node tools/apply-baseline.mjs",
     "invite:create": "node tools/create-invite.mjs",
     "host:approve": "node tools/approve-host.mjs",
     "typecheck": "tsc --noEmit"

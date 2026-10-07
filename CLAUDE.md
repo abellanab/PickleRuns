@@ -277,6 +277,8 @@ npm run db:migrate:down
 - RLS policies and triggers go in migration files using `pgm.sql()`.
 - `supabase/migrations/` contains legacy SQL files (already applied) — do not touch them.
 - Runner script: `tools/run-pg-migrate.mjs` — loads `DIRECT_URL` from `.env`.
+- Fresh (empty) databases: `npm run db:baseline:apply` then `npm run db:migrate`; the legacy chain cannot replay from scratch.
+- Regenerate the baseline (`npm run db:baseline:generate`) after applying new migrations to the source-of-truth DB; applied migrations are still never edited.
 
 ---
 
