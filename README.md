@@ -244,6 +244,23 @@ npm run db:migrate:down
 - `supabase/migrations/` contains legacy SQL files (already applied) — do not touch.
 - Runner script: `tools/run-pg-migrate.mjs` — loads `DIRECT_URL` from `.env`.
 
+### Setting up a fresh database
+
+The legacy migration chain cannot be replayed on an empty database, so fresh setups use a schema baseline instead.
+
+```bash
+# Existing database (already has public.runs): apply pending migrations
+npm run db:migrate
+
+# Empty database (e.g. a new Supabase project): install the baseline, then migrate
+npm run db:baseline:apply
+npm run db:migrate
+```
+
+`db:baseline:apply` refuses to run if `public.runs` or `public.users` exist, installs `db/baseline/schema.sql` in one transaction, and marks every name in `db/baseline/applied-migrations.json` as applied. Use `--dry-run` to preview counts.
+
+Regenerate the baseline (`npm run db:baseline:generate`) after new migrations are applied to the source-of-truth database, so fresh setups pick them up and skip the legacy chain.
+
 ## Scripts
 
 | Command | Description |
@@ -256,6 +273,8 @@ npm run db:migrate:down
 | `npm run db:migrate` | Apply pending migrations |
 | `npm run db:migrate:down` | Roll back the last migration |
 | `npm run db:migrate:create -- <desc>` | Scaffold a new migration file |
+| `npm run db:baseline:generate` | Regenerate `db/baseline/` from the live database |
+| `npm run db:baseline:apply` | Install the baseline on an empty database |
 
 ## Auth Model
 
