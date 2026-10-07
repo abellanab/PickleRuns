@@ -15,6 +15,8 @@ type CourtAssignmentState = {
   init: (courtId: string, proposal: FillProposal) => void;
   select: (selection: Selection | null) => void;
   swapOrPlace: (target: SlotTarget) => void;
+  drop: (entryId: string, target: SlotTarget) => void;
+  scramble: () => void;
   remove: (entryId: string) => void;
   reset: () => void;
 };
@@ -24,6 +26,21 @@ const empty = () => ({ courtId: null, sideA: [] as string[], sideB: [] as string
 function swapIds(ids: string[], a: string, b: string): string[] {
   return ids.map((id) => (id === a ? b : id === b ? a : id));
 }
+
+function shuffle(ids: string[]): string[] {
+  const out = [...ids];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function sameMembers(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id) => b.includes(id));
+}
+
+const MAX_SCRAMBLE_ATTEMPTS = 10;
 
 export const useCourtAssignmentStore = create<CourtAssignmentState>((set, get) => ({
   ...empty(),
@@ -76,6 +93,56 @@ export const useCourtAssignmentStore = create<CourtAssignmentState>((set, get) =
     if (target.side === "A" && nextA.length < MAX_PER_SIDE) nextA.push(selected.entryId);
     else if (target.side === "B" && nextB.length < MAX_PER_SIDE) nextB.push(selected.entryId);
     else return;
+    set({ sideA: nextA, sideB: nextB, selected: null });
+  },
+
+  drop: (entryId, target) => {
+    const { sideA, sideB } = get();
+
+    if (target.side === "pool") {
+      set({
+        sideA: sideA.filter((id) => id !== entryId),
+        sideB: sideB.filter((id) => id !== entryId),
+        selected: null,
+      });
+      return;
+    }
+
+    if (target.entryId) {
+      if (target.entryId === entryId) {
+        set({ selected: null });
+        return;
+      }
+      set({
+        sideA: swapIds(sideA, entryId, target.entryId),
+        sideB: swapIds(sideB, entryId, target.entryId),
+        selected: null,
+      });
+      return;
+    }
+
+    const nextA = sideA.filter((id) => id !== entryId);
+    const nextB = sideB.filter((id) => id !== entryId);
+    if (target.side === "A" && nextA.length < MAX_PER_SIDE) nextA.push(entryId);
+    else if (target.side === "B" && nextB.length < MAX_PER_SIDE) nextB.push(entryId);
+    else return;
+    set({ sideA: nextA, sideB: nextB, selected: null });
+  },
+
+  scramble: () => {
+    const { sideA, sideB } = get();
+    const ids = [...sideA, ...sideB];
+    if (ids.length < 2) return;
+
+    let nextA = sideA;
+    let nextB = sideB;
+    for (let attempt = 0; attempt < MAX_SCRAMBLE_ATTEMPTS; attempt++) {
+      const shuffled = shuffle(ids);
+      nextA = shuffled.slice(0, sideA.length);
+      nextB = shuffled.slice(sideA.length);
+      // Compare team membership, not slot order, so the result is a visibly different matchup.
+      if (!sameMembers(nextA, sideA)) break;
+    }
     set({ sideA: nextA, sideB: nextB, selected: null });
   },
 
