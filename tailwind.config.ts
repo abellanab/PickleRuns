@@ -38,8 +38,8 @@ export default {
         "success-border": "rgba(74, 222, 128, 0.35)",
       },
       fontFamily: {
-        display: ["Barlow Condensed", "sans-serif"],
-        body: ["Barlow", "sans-serif"],
+        display: ["var(--font-barlow-condensed)", "Barlow Condensed", "sans-serif"],
+        body: ["var(--font-barlow)", "Barlow", "sans-serif"],
       },
       fontSize: {
         "display-sm": ["11px", { lineHeight: "1", letterSpacing: "0.14em" }],
