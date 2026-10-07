@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, apiPatch } from "@/lib/api/client";
 
 export type GameData = {
@@ -10,11 +10,7 @@ export type GameData = {
   scoreGoal: number;
   scoreA: number;
   scoreB: number;
-  winner: "team_a" | "team_b" | "tie" | null;
-  timeLimitSeconds: number | null;
-  clockStartedAt: string | null;
-  clockPausedAt: string | null;
-  totalPausedSeconds: number;
+  winner: "team_a" | "team_b" | null;
   startedAt: string | null;
   endedAt: string | null;
 };
@@ -56,43 +52,63 @@ export function useGameDetails(code: string, gameId: string | null) {
   });
 }
 
+type ScoreResult = { event: EventData; game: GameData };
+
+function applyServerGame(
+  queryClient: QueryClient,
+  code: string,
+  gameId: string,
+  game: GameData,
+) {
+  queryClient.setQueryData<GameDetails>(["game", code, gameId], (prev) =>
+    prev ? { ...prev, game } : prev,
+  );
+  if (game.status === "completed") {
+    queryClient.invalidateQueries({ queryKey: ["game", code, gameId] });
+    queryClient.invalidateQueries({ queryKey: ["courts", code] });
+    queryClient.invalidateQueries({ queryKey: ["queue", code] });
+    queryClient.invalidateQueries({ queryKey: ["games", code] });
+  }
+}
+
 export function useScoreMutation(code: string, gameId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { queueEntryId: string; team: "team_a" | "team_b"; points: number }) =>
-      apiPost<EventData>(`/api/runs/${code}/games/${gameId}/score`, input),
+    mutationFn: (input: { queueEntryId: string }) =>
+      apiPost<ScoreResult>(`/api/runs/${code}/games/${gameId}/score`, input),
     // Cancel any in-flight game refetch so its stale response can't land after
-    // the optimistic value and snap the score back. The realtime channel and
-    // the onError invalidate are the longer-term resync paths.
-    onMutate: async ({ queueEntryId, team, points }) => {
+    // the optimistic value and snap the score back.
+    onMutate: async ({ queueEntryId }) => {
       await queryClient.cancelQueries({ queryKey: ["game", code, gameId] });
       queryClient.setQueryData<GameDetails>(["game", code, gameId], (prev) => {
         if (!prev) return prev;
-        const newScoreA = prev.game.scoreA + (team === "team_a" ? points : 0);
-        const newScoreB = prev.game.scoreB + (team === "team_b" ? points : 0);
         const scorer = prev.players.find((p) => p.queueEntryId === queueEntryId);
+        if (!scorer) return prev;
         const optimisticEvent: EventData = {
           id: `optimistic-${Date.now()}`,
           queueEntryId,
-          displayName: scorer?.displayName ?? "",
-          team,
-          points,
+          displayName: scorer.displayName,
+          team: scorer.team,
+          points: 1,
           createdAt: new Date().toISOString(),
         };
         return {
           ...prev,
           game: {
             ...prev.game,
-            scoreA: newScoreA,
-            scoreB: newScoreB,
+            scoreA: prev.game.scoreA + (scorer.team === "team_a" ? 1 : 0),
+            scoreB: prev.game.scoreB + (scorer.team === "team_b" ? 1 : 0),
             status: prev.game.status === "pending" ? "active" : prev.game.status,
           },
           players: prev.players.map((p) =>
-            p.queueEntryId === queueEntryId ? { ...p, points: p.points + points } : p,
+            p.queueEntryId === queueEntryId ? { ...p, points: p.points + 1 } : p,
           ),
           recentEvents: [optimisticEvent, ...prev.recentEvents].slice(0, 10),
         };
       });
+    },
+    onSuccess: ({ game }) => {
+      applyServerGame(queryClient, code, gameId, game);
     },
     onError: () => {
       queryClient.invalidateQueries({ queryKey: ["game", code, gameId] });
@@ -103,7 +119,7 @@ export function useScoreMutation(code: string, gameId: string) {
 export function useUndoScoreMutation(code: string, gameId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => apiPatch<EventData>(`/api/runs/${code}/games/${gameId}/score`),
+    mutationFn: () => apiPatch<ScoreResult>(`/api/runs/${code}/games/${gameId}/score`),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ["game", code, gameId] });
       queryClient.setQueryData<GameDetails>(["game", code, gameId], (prev) => {
@@ -125,21 +141,12 @@ export function useUndoScoreMutation(code: string, gameId: string) {
         };
       });
     },
-    onError: () => {
+    onSuccess: ({ game }) => {
+      applyServerGame(queryClient, code, gameId, game);
       queryClient.invalidateQueries({ queryKey: ["game", code, gameId] });
     },
-  });
-}
-
-export function useClockMutation(code: string, gameId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (action: "start" | "pause" | "resume") => {
-      const updated = await apiPatch<GameData>(`/api/runs/${code}/games/${gameId}/clock`, { action });
-      queryClient.setQueryData<GameDetails>(["game", code, gameId], (prev) =>
-        prev ? { ...prev, game: updated } : prev,
-      );
-      return updated;
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["game", code, gameId] });
     },
   });
 }
@@ -147,8 +154,11 @@ export function useClockMutation(code: string, gameId: string) {
 export function useEndGameMutation(code: string, gameId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const updated = await apiPatch<GameData>(`/api/runs/${code}/games/${gameId}`);
+    mutationFn: async (input?: { winner?: "team_a" | "team_b" }) => {
+      const updated = await apiPatch<GameData>(
+        `/api/runs/${code}/games/${gameId}`,
+        input?.winner ? { winner: input.winner } : undefined,
+      );
       queryClient.setQueryData<GameDetails>(["game", code, gameId], (prev) =>
         prev ? { ...prev, game: updated } : prev,
       );
@@ -156,17 +166,22 @@ export function useEndGameMutation(code: string, gameId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["games", code] });
+      queryClient.invalidateQueries({ queryKey: ["courts", code] });
+      queryClient.invalidateQueries({ queryKey: ["queue", code] });
     },
   });
 }
 
-export function useConfirmTeamsMutation(code: string) {
+export function useStartMatchMutation(code: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { teamA: string[]; teamB: string[] }) =>
+    mutationFn: (input: { courtId: string; sideA: string[]; sideB: string[] }) =>
       apiPost<GameData>(`/api/runs/${code}/games`, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["games", code] });
+      queryClient.invalidateQueries({ queryKey: ["courts", code] });
+      queryClient.invalidateQueries({ queryKey: ["queue", code] });
+      queryClient.invalidateQueries({ queryKey: ["fill-proposal", code] });
     },
   });
 }

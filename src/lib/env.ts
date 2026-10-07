@@ -11,6 +11,9 @@ const serverSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+});
+
+const mailSchema = z.object({
   RESEND_API_KEY: z.string().min(1),
   RESEND_FROM_EMAIL: z.string().min(1),
 });
@@ -21,9 +24,11 @@ const clientSchema = z.object({
 });
 
 type ServerEnv = z.infer<typeof serverSchema>;
+type MailEnv = z.infer<typeof mailSchema>;
 type ClientEnv = z.infer<typeof clientSchema>;
 
 let cachedServer: ServerEnv | undefined;
+let cachedMail: MailEnv | undefined;
 let cachedClient: ClientEnv | undefined;
 
 function readServer(): ServerEnv {
@@ -34,14 +39,26 @@ function readServer(): ServerEnv {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    RESEND_API_KEY: process.env.RESEND_API_KEY,
-    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
   });
   if (!parsed.success) {
     throw new Error(`Invalid server env: ${JSON.stringify(parsed.error.flatten().fieldErrors)}`);
   }
   cachedServer = parsed.data;
   return cachedServer;
+}
+
+// Separate from readServer so missing mail vars never break DB/auth call sites.
+function readMail(): MailEnv {
+  if (cachedMail) return cachedMail;
+  const parsed = mailSchema.safeParse({
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+  });
+  if (!parsed.success) {
+    throw new Error(`Invalid mail env: ${JSON.stringify(parsed.error.flatten().fieldErrors)}`);
+  }
+  cachedMail = parsed.data;
+  return cachedMail;
 }
 
 function readClient(): ClientEnv {
@@ -74,9 +91,9 @@ export const env = {
     return readServer().SUPABASE_SERVICE_ROLE_KEY;
   },
   get RESEND_API_KEY(): string {
-    return readServer().RESEND_API_KEY;
+    return readMail().RESEND_API_KEY;
   },
   get RESEND_FROM_EMAIL(): string {
-    return readServer().RESEND_FROM_EMAIL;
+    return readMail().RESEND_FROM_EMAIL;
   },
 };

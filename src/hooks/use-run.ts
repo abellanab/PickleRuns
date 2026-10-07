@@ -10,6 +10,8 @@ export type RunSummary = {
   name: string;
   location: string | null;
   status: "lobby" | "active" | "completed";
+  runMode: "score_only" | "queue_only" | "score_and_queue";
+  courtCount: number;
   sessionCode: string;
   createdAt: string;
   gameCount: number;
@@ -19,11 +21,12 @@ export type RunSummary = {
 export type CreateRunPayload = {
   name: string;
   location: string;
-  format: "winner_stays" | "new_ten";
-  scoreGoal: number;
-  pointSystem: "one_two" | "two_three";
+  runMode: "score_only" | "queue_only" | "score_and_queue";
+  rotationStyle: "winner_stays" | "rotate_all";
+  courtCount: number;
+  scoreGoal: 11 | 15;
+  winByTwo: boolean;
   sessionCode: string;
-  timeLimitSeconds?: number;
 };
 
 export function useRun(code: string) {

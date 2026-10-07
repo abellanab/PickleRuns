@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { joinRunSchema } from "@/validators";
-import { getRunByCode } from "@/services/run.service";
+import { getRunByCode, assertRunModeAllows } from "@/services/run.service";
 import { joinQueue, getQueueForRun } from "@/services/queue.service";
 import { createClient } from "@/lib/supabase/server";
-import { apiSuccess, apiError } from "@/lib/api/response";
+import { apiSuccess, apiError, handleApiError } from "@/lib/api/response";
 
 // GET  /api/runs/[code]/queue — fetch all queue entries
 // POST /api/runs/[code]/queue — join queue (guest or authenticated)
@@ -51,6 +51,14 @@ export async function POST(
   // host_add lets the host add an arbitrary player by name — only the host may do this
   if (result.data.mode === "host_add" && userId !== run.hostId) {
     return apiError("FORBIDDEN", "Only the host can add players", 403);
+  }
+
+  if (result.data.mode === "self_join") {
+    try {
+      assertRunModeAllows(run, "queue");
+    } catch (err) {
+      return handleApiError(err);
+    }
   }
 
   const { entry, position } = await joinQueue(run.id, result.data.displayName, userId);

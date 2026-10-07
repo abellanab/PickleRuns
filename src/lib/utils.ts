@@ -36,10 +36,3 @@ export function deriveInitials(
   }
   return (email ?? "").slice(0, 2).toUpperCase() || "??";
 }
-
-export function winnerLabel(winner: "team_a" | "team_b" | "tie" | null): string {
-  if (winner === "team_a") return "Runs won";
-  if (winner === "team_b") return "Next won";
-  if (winner === "tie") return "Tie game";
-  return "—";
-}

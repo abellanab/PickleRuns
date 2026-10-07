@@ -48,7 +48,7 @@ export async function POST(
   }
 
   try {
-    const game = await createGame(run.id, result.data.teamA, result.data.teamB);
+    const game = await createGame(run.id, result.data.courtId, result.data.sideA, result.data.sideB);
     return apiSuccess(game, 201);
   } catch (err) {
     return handleApiError(err);

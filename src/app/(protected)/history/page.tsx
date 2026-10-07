@@ -13,6 +13,12 @@ function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(iso));
 }
 
+const RUN_MODE_LABELS: Record<RunSummary["runMode"], string> = {
+  score_only: "Score only",
+  queue_only: "Queue only",
+  score_and_queue: "Score + queue",
+};
+
 function InlineStatus({ status }: { status: RunSummary["status"] }) {
   if (status === "active") {
     return (
@@ -77,7 +83,7 @@ export default function HistoryPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard"
-            className="w-9 h-9 flex items-center justify-center rounded-sm border border-border bg-bg-surface text-text-secondary transition-all hover:border-accent-dim hover:text-accent hover:bg-accent-glow"
+            className="w-11 h-11 flex items-center justify-center rounded-sm border border-border bg-bg-surface text-text-secondary transition-all hover:border-accent-dim hover:text-accent hover:bg-accent-glow"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
               <polyline points="15 18 9 12 15 6" />
@@ -223,6 +229,15 @@ export default function HistoryPage() {
                             }}
                           >
                             {run.isHost ? "Host" : "Joined"}
+                          </span>
+
+                          <span className="text-border/60 select-none text-[10px]">·</span>
+                          <span className="font-display text-[11px] font-bold tracking-[0.1em] uppercase text-text-muted">
+                            {RUN_MODE_LABELS[run.runMode]}
+                          </span>
+                          <span className="text-border/60 select-none text-[10px]">·</span>
+                          <span className="font-display text-[11px] font-bold tracking-[0.1em] uppercase text-text-muted">
+                            {run.courtCount} {run.courtCount === 1 ? "Court" : "Courts"}
                           </span>
 
                           {run.location && (

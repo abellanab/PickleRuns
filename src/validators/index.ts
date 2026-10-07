@@ -12,15 +12,20 @@ export {
 
 export {
   createGameSchema,
-  clockActionSchema,
+  endGameSchema,
   type CreateGameInput,
-  type ClockActionInput,
+  type EndGameInput,
 } from "./game.validator";
 
 export {
   scorePointSchema,
   type ScorePointInput,
 } from "./score.validator";
+
+export {
+  createHostRequestSchema,
+  type CreateHostRequestInput,
+} from "./host-request.validator";
 
 export {
   inviteTokenSchema,

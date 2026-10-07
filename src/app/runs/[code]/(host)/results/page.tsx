@@ -4,18 +4,11 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Home } from "lucide-react";
 import { SessionTopbar } from "@/components/ui/session-topbar";
-import { GameBreakdown } from "@/components/ui/game-breakdown";
+import { GameBreakdown, winnerText } from "@/components/ui/game-breakdown";
 import { useRun } from "@/hooks/use-run";
 import { useGameDetails } from "@/hooks/use-game";
 import { useQueue } from "@/hooks/use-queue";
 import { useSessionUser } from "@/hooks/use-session";
-import { formatTime, winnerLabel } from "@/lib/utils";
-
-function gameDuration(startedAt: string | null, endedAt: string | null): string {
-  if (!startedAt || !endedAt) return "—";
-  const ms = new Date(endedAt).getTime() - new Date(startedAt).getTime();
-  return formatTime(Math.round(ms / 1000));
-}
 
 export default function ResultsPage() {
   return (
@@ -74,9 +67,8 @@ function ResultsContent() {
   const isTeamAWinner = game?.winner === "team_a";
   const isTeamBWinner = game?.winner === "team_b";
   const totalPoints = (game?.scoreA ?? 0) + (game?.scoreB ?? 0);
-  const duration = game ? gameDuration(game.startedAt, game.endedAt) : "—";
 
-  const upNextCount = run?.format === "winner_stays" ? 5 : 10;
+  const upNextCount = run?.rotationStyle === "winner_stays" ? 5 : 10;
   const waitingEntries = useMemo(
     () => (queue?.waiting ?? []).filter((e) => e.status === "waiting"),
     [queue],
@@ -136,7 +128,7 @@ function ResultsContent() {
   }, [loading, gameId, detailsError, game, code, router]);
 
   function handleNextGame() {
-    router.push(`/runs/${code}/team-assignment`);
+    router.push(`/runs/${code}/lobby`);
   }
 
   const redirecting =
@@ -176,7 +168,7 @@ function ResultsContent() {
             Winner
           </span>
           <span className="relative font-display text-[38px] font-black tracking-[0.02em] uppercase text-text-primary leading-none">
-            {winnerLabel(game?.winner ?? null)}
+            {winnerText(game?.winner ?? null)}
           </span>
         </div>
 
@@ -185,7 +177,7 @@ function ResultsContent() {
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
             <div className="flex flex-col items-center gap-0.5">
               <span className={`font-display text-[11px] font-bold tracking-[0.14em] uppercase ${isTeamAWinner ? "text-accent-dim" : "text-text-muted"}`}>
-                Runs
+                Side A
               </span>
               <span
                 className={`font-display font-black leading-[0.9] tracking-[-0.02em] ${isTeamAWinner ? "text-text-primary" : "text-text-secondary"}`}
@@ -197,7 +189,7 @@ function ResultsContent() {
             <span className="font-display text-[24px] font-black text-text-muted tracking-[-0.04em] pb-2">—</span>
             <div className="flex flex-col items-center gap-0.5">
               <span className={`font-display text-[11px] font-bold tracking-[0.14em] uppercase ${isTeamBWinner ? "text-accent-dim" : "text-text-muted"}`}>
-                Next
+                Side B
               </span>
               <span
                 className={`font-display font-black leading-[0.9] tracking-[-0.02em] ${isTeamBWinner ? "text-text-primary" : "text-text-secondary"}`}
@@ -210,15 +202,6 @@ function ResultsContent() {
         </div>
 
         <div className="flex items-center justify-center gap-4 mt-2.5 mx-5">
-          {run?.timeLimitSeconds != null && (
-            <>
-              <div className="flex flex-col items-center gap-px">
-                <span className="font-display text-[10px] font-bold tracking-[0.14em] uppercase text-text-muted">Duration</span>
-                <span className="font-display text-[18px] font-black tracking-[0.02em] text-text-secondary leading-none">{duration}</span>
-              </div>
-              <div className="w-px h-6 bg-border flex-shrink-0" />
-            </>
-          )}
           <div className="flex flex-col items-center gap-px">
             <span className="font-display text-[10px] font-bold tracking-[0.14em] uppercase text-text-muted">Total Pts</span>
             <span className="font-display text-[18px] font-black tracking-[0.02em] text-text-secondary leading-none">{totalPoints}</span>

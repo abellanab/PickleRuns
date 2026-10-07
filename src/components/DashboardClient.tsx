@@ -6,10 +6,11 @@ import Link from "next/link";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { cn, deriveInitials } from "@/lib/utils";
 import JoinByCodeForm from "@/components/ui/JoinByCodeForm";
+import HostRequestSheet from "@/components/ui/HostRequestSheet";
 import { useRuns, useCloseRunMutation, type RunSummary } from "@/hooks/use-run";
-import { useHostStatus, useRequestHostMutation } from "@/hooks/use-host-request";
+import { useHostStatus } from "@/hooks/use-host-request";
 import { signOut } from "@/app/(auth)/actions";
-import { Plus, ChevronRight, LogOut, User, Clock, Sparkles } from "lucide-react";
+import { Plus, ChevronRight, LogOut, User, Clock, Sparkles, Check } from "lucide-react";
 
 type InitialUser = {
   id: string;
@@ -45,17 +46,21 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
 
   const [showConflictModal, setShowConflictModal] = useState(false);
   const [hostPromptDismissed, setHostPromptDismissed] = useState(false);
+  const [showHostModal, setShowHostModal] = useState(false);
 
   const { data: runs = [] } = useRuns(true);
-  const { data: hostStatus } = useHostStatus();
-  const requestHost = useRequestHostMutation();
+  const {
+    data: hostStatus,
+    isError: isHostStatusError,
+    refetch: refetchHostStatus,
+  } = useHostStatus();
 
   const isApproved = hostStatus === "approved";
   const isPending = hostStatus === "pending";
   const isDenied = hostStatus === "denied";
   const isUnapproved = hostStatus === "none" || hostStatus === "denied";
 
-  const dismissKey = `ballruns:host-prompt-dismissed:${initialUser.id}`;
+  const dismissKey = `pickleruns:host-prompt-dismissed:${initialUser.id}`;
 
   useEffect(() => {
     if (intent) {
@@ -102,6 +107,13 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
     }
   }
 
+  const metaName = initialUser.metadata?.displayName;
+  const defaultHostName = typeof metaName === "string" ? metaName : "";
+
+  function openHostModal() {
+    setShowHostModal(true);
+  }
+
   async function handleCloseAndStart() {
     if (!activeRun) return;
     try {
@@ -120,7 +132,7 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
       <div className="pt-14 flex flex-col gap-[2px] animate-fade-up">
         <div className="flex items-start justify-between">
           <h1 className="font-display text-[52px] font-black tracking-[-0.01em] uppercase text-text-primary leading-none">
-            Ball
+            Pickle
             <br />
             Runs
           </h1>
@@ -146,14 +158,28 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                   </span>
                 </div>
 
-                {isUnapproved && (
+                {isPending && (
+                  <div className="min-h-11 flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-bold tracking-[0.06em] uppercase text-text-muted">
+                    <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                    Host request pending
+                  </div>
+                )}
+
+                {isApproved && (
+                  <div className="min-h-11 flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-bold tracking-[0.06em] uppercase text-text-muted">
+                    <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                    Host approved
+                  </div>
+                )}
+
+                {!isPending && !isApproved && (
                   <DropdownMenu.Item asChild>
                     <button
-                      onClick={() => requestHost.mutate()}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-bold tracking-[0.06em] uppercase text-text-secondary hover:bg-bg-hover hover:text-text-primary outline-none cursor-pointer transition-colors"
+                      onClick={openHostModal}
+                      className="w-full min-h-11 flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-bold tracking-[0.06em] uppercase text-text-secondary hover:bg-bg-hover hover:text-text-primary outline-none cursor-pointer transition-colors"
                     >
                       <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
-                      Become a Host
+                      {isDenied ? "Request again" : "Request to host"}
                     </button>
                   </DropdownMenu.Item>
                 )}
@@ -161,7 +187,7 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                 <DropdownMenu.Item asChild>
                   <Link
                     href="/account"
-                    className="flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-bold tracking-[0.06em] uppercase text-text-secondary hover:bg-bg-hover hover:text-text-primary outline-none cursor-pointer transition-colors"
+                    className="min-h-11 flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-bold tracking-[0.06em] uppercase text-text-secondary hover:bg-bg-hover hover:text-text-primary outline-none cursor-pointer transition-colors"
                   >
                     <User className="w-3.5 h-3.5 flex-shrink-0" />
                     Account
@@ -173,7 +199,7 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                 <DropdownMenu.Item asChild>
                   <button
                     onClick={() => signOut()}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-bold tracking-[0.06em] uppercase text-[#ff4040] hover:bg-[#ff4040]/10 outline-none cursor-pointer transition-colors"
+                    className="w-full min-h-11 flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-bold tracking-[0.06em] uppercase text-[#ff4040] hover:bg-[#ff4040]/10 outline-none cursor-pointer transition-colors"
                   >
                     <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
                     Sign Out
@@ -265,6 +291,21 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
             </>
           )}
 
+          {isHostStatusError && (
+            <div className="w-full flex items-center justify-between gap-3 px-[18px] py-3 rounded-md border border-border bg-bg-surface animate-fade-up">
+              <span className="font-body text-[13px] text-text-secondary">
+                Couldn&apos;t load your host status.
+              </span>
+              <button
+                type="button"
+                onClick={() => refetchHostStatus()}
+                className="h-11 px-3 flex items-center justify-center font-display text-[13px] font-bold tracking-[0.08em] uppercase text-accent"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
           {isPending && (
             <div
               className="w-full h-14 rounded-md border border-border bg-bg-surface flex items-center justify-center gap-2 animate-fade-up"
@@ -309,21 +350,16 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                 </span>
                 <span className="font-body text-[13px] text-text-secondary leading-[1.5]">
                   {isDenied
-                    ? "Your last request wasn't approved. Add some detail and try again."
+                    ? "Your last request wasn't approved. You can send a new request."
                     : "Hosting is approval-gated. Send a quick request and we'll get you set up."}
                 </span>
               </div>
               <div className="flex flex-col gap-2.5">
                 <button
-                  onClick={() => requestHost.mutate()}
-                  disabled={requestHost.isPending}
-                  className="w-full h-12 flex items-center justify-center rounded-md bg-accent text-bg font-display text-[15px] font-extrabold tracking-[0.1em] uppercase transition-all duration-150 hover:-translate-y-px hover:bg-[#d4f545] active:scale-[0.98] disabled:opacity-50"
+                  onClick={openHostModal}
+                  className="w-full h-12 flex items-center justify-center rounded-md bg-accent text-bg font-display text-[15px] font-extrabold tracking-[0.1em] uppercase transition-all duration-150 hover:-translate-y-px hover:bg-[#d4f545] active:scale-[0.98]"
                 >
-                  {requestHost.isPending
-                    ? "Sending…"
-                    : isDenied
-                      ? "Request Again"
-                      : "Request to Host"}
+                  {isDenied ? "Request Again" : "Request to Host"}
                 </button>
                 <button
                   onClick={handleDismissHostPrompt}
@@ -338,8 +374,7 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
 
         {isUnapproved && hostPromptDismissed && (
           <button
-            onClick={() => requestHost.mutate()}
-            disabled={requestHost.isPending}
+            onClick={openHostModal}
             className="mt-auto pt-8 w-full text-center font-body text-[13px] text-text-muted transition-colors hover:text-text-secondary animate-fade-up disabled:opacity-50"
             style={{ animationDelay: "0.3s" }}
           >
@@ -400,6 +435,12 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
           </div>
         </>
       )}
+
+      <HostRequestSheet
+        open={showHostModal}
+        onClose={() => setShowHostModal(false)}
+        defaultName={defaultHostName}
+      />
     </div>
   );
 }

@@ -8,8 +8,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "BallRuns — Run your game",
-  description: "Basketball run management and scorekeeping",
+  title: "PickleRuns — Run your game",
+  description: "Pickleball court queue and scorekeeping",
 };
 
 export default function RootLayout({

@@ -18,7 +18,7 @@ export async function sendWelcomeEmail({
   const { error } = await getResend().emails.send({
     from: env.RESEND_FROM_EMAIL,
     to,
-    subject: "Welcome to BallRuns",
+    subject: "Welcome to PickleRuns",
     react: WelcomeEmail({ displayName }),
   });
 

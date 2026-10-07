@@ -1,20 +1,20 @@
-# BallRuns — Product Brief
+# PickleRuns — Product Brief
 
 ## What It Is
 
-BallRuns is a live basketball session manager built for how open runs actually work. The host manages the game from their phone, everyone else watches live from their browser. No app install required, minimal friction for players.
+PickleRuns is a live pickleball doubles court manager built for how open play actually works. The host manages the courts from their phone, everyone else watches live from their browser. No app install required, minimal friction for players.
 
 ---
 
 ## The Problem
 
-Open runs are informal but they still need organizing — who's next, what's the score, who scored. Right now this is all done by memory, shouting, or a whiteboard. Players who haven't arrived yet have no idea what's happening. There's no record of anything.
+Open play is informal but it still needs organizing — who is next on which court, what is the score, who partners with whom. Right now this is done by memory, shouting, or a paddle stack at the net. Players who have not arrived yet have no idea what is happening. There is no record of anything.
 
 ---
 
 ## The Solution
 
-A web app where the host creates a run, shares a QR code, and manages the entire session from one screen. Players scan to join the queue. Everyone — including those still at home — can see the live score, who scored, and where they are in the queue.
+A web app where the host creates a run, shares a QR code, and manages the entire session from one screen. Players scan to join the queue. Everyone can see the live score, which courts are in play, who is next up, and where they are in the queue.
 
 ---
 
@@ -22,11 +22,13 @@ A web app where the host creates a run, shares a QR code, and manages the entire
 
 | Role | Access | Account |
 |---|---|---|
-| Host | Full control — queue, teams, score, clock | Required |
-| Player | Joins queue, sees live score and their points | Guest (optional account) |
+| Host | Full control — courts, queue, scoring | Required |
+| Player | Joins queue, sees live scores and their place in line | Guest (optional account) |
 | Spectator | Read-only live view | Guest |
 
 Guests who create an account start tracking their stats from signup onwards. No backfilling of guest history.
+
+A host has at most one open (lobby or active) run at a time.
 
 ---
 
@@ -34,120 +36,103 @@ Guests who create an account start tracking their stats from signup onwards. No 
 
 ```
 Run
-├── id, name, location, date
-├── format (new 10 / winner stays / host decides)
-├── score goal (17, 21, etc.)
-├── point system (1s & 2s / 2s & 3s)
-├── time limit (optional)
+├── id, name, location
+├── run mode (score only / queue only / score and queue)
+├── rotation style (rotate all / winner stays)
+├── courts (1–8)
+├── score goal (11 or 15)
+├── win by two (on/off)
 ├── session code (public, for QR)
 ├── queue [ ...players (each: name, paid?) ]
-└── Games                              (each inherits goal + time limit from the run)
+└── Games                              (each belongs to exactly one court)
     ├── Game 1
+    │   ├── court
     │   ├── goal
-    │   ├── duration (only if a time limit was set)
-    │   ├── Team A [ ...players ]
-    │   ├── Team B [ ...players ]
+    │   ├── Side A [ ...1–2 players ]
+    │   ├── Side B [ ...1–2 players ]
     │   ├── score A, score B
-    │   ├── per-player points
-    │   └── winner
+    │   └── winner (Side A, Side B, or none)
     ├── Game 2
     └── ...
 ```
+
+Every player must give a name.
 
 ---
 
 ## Core Features
 
 ### Creating a Run
-- Host signs in, sets a name, optional location, game format, score goal, point system, and an optional time limit
-- These settings apply to every game in the run — there is no per-game setup step; each game inherits the run's goal and time limit
+- Host signs in, sets a name, optional location, run mode, number of courts, score goal, and win-by-two
+- Rotation style applies to runs that use a queue
+- These settings apply to every game in the run — there is no per-game setup step
 - Session code is generated, QR is immediately live
-- Formats: new 10 every game / winner stays / host decides after each game
-- Point systems: 1s & 2s, or 2s & 3s — fixes which point values are legal when scoring
+
+### Run Modes
+- **Score only** — no queue. The host sets the matches on each court and scores them
+- **Queue only** — a paddle-stack queue with court rotation, no points. The host ends each match and picks the winner when it is needed
+- **Score and queue** — both
+
+### Rotation Styles
+- **Rotate all** — all four players go to the back of the queue, winners ahead of losers
+- **Winner stays** — only the losing side goes to the back; the winners keep their places
+
+Rotation is done by the database when a game completes, never by the app. Pairs that just played stay partners when they are drawn into the next game.
+
+### Courts
+- A run has one or more courts (up to 8), shown as cards on the courts dashboard
+- Each court holds at most one game at a time
+- The host can add a court or remove an idle court during the run
 
 ### Queue
-- Players scan QR or enter session code at any point during the run
-- They type their name and land at the back of the queue
-- Queue persists across all games in the run
-- Auto-updates after each game based on the format
+- Players scan QR or enter session code at any point during the run, type their name, and land at the back of the queue (the host can also add players)
+- One ordered queue per run, ordered by position
+- Auto-updates after each game based on the rotation style
 
 ### Queue Management
 - Dedicated page accessible throughout the entire run via bottom nav
-- Available from lobby, during a game, and between games
-
-Queue is structured in three sections:
-```
-On Court  — players in the current game, locked while game is live
-Up Next   — next 10 players in line
-Waiting   — everyone else in order
-```
 
 Host actions per player:
-- **Reorder** — drag up or down in the queue
 - **Mark Out** — player stepped away; greyed out but stays in the list in case they return
 - **Reinstate** — bring a marked-out player back into the queue
 - **Remove** — gone for good, taken off entirely
-- **Rename** — fix a name or swap to a nickname
-
-Every player shows a games played counter so the host can:
-- Bump a late arrival up if they haven't played yet
-- Spot who's had multiple runs and deprioritize if needed
-- Make fair calls between early arrivals and latecomers
 
 ### Court Fees
 - A dedicated payment view lists everyone in the run with a paid / unpaid toggle
 - The host marks each player paid as they collect the court fee
 - Paid status is tracked per player and is independent of their queue status — marking someone out or removing them never clears the record that they paid
-- Run lobby: QR front and center
-- During a game: QR accessible behind a share button
-- Results screen: no QR
 
-### Team Assignment
-- Host pulls the next 10 players from the queue
-- Default split: top 5 vs bottom 5
-- Host can drag players between teams to balance
-- Scramble button for a random split
-- Host confirms, game starts
+### Filling a Court
+- The host opens a court and the app proposes the next four players from the queue (Fill proposal), keeping partners who just played together
+- The host can adjust the players before confirming
+- Confirming creates the game and it starts immediately — assignment is start
 
 ### During a Game
-- Host taps a player's name to add points
+- Rally scoring: the host taps a player and the tapped player's side gets exactly one point
+- Undo removes the last point (it is voided, not deleted)
 - All connected viewers see the score update live
-- If a time limit is set: server-side clock that survives page reloads and connection drops
-- If no time limit: no clock shown
+- No clock and no time limit
 - Late arrivals can scan the QR and join the queue at any time
 
 ### Ending a Game
-- First team to reach the goal wins
-- If timed: highest score when clock hits zero wins
-- Queue auto-updates based on run format
-- Host taps "Start Next Game"
+- The game ends automatically when a side reaches the score goal (and leads by 2 if win-by-two is on)
+- In queue-only runs the host ends each match and chooses the winner when needed; a tied game under winner stays needs a winner chosen
+- The queue updates by itself and the court is free for the next group
 
-### Run Lobby (Feed)
+### Courts Dashboard (Lobby)
 - Available to anyone who joined the run
-- Live game pinned to the top showing current score
-- All past games listed below in order
-- Tap any past game to see full details
-
-### Past Game View
-- Final score and winner
-- Duration (only shown if the game had a time limit)
-- Per-player points for both teams
+- Court cards show the live game or an idle court, plus a Next up strip and a player status banner
+- Tap a game to see full details
 
 ### Run History
 - Account holders can view all their past runs
-- Each run shows all games, scores, and per-player points
+- Each run shows all games and scores
 
 ---
 
-## Clock Architecture
+## Realtime
 
-The game clock never "runs" on any device. When the host starts the clock, the server stores a timestamp. Every client calculates the display by subtracting from that timestamp.
-
-```
-display = time_limit - (now - started_at - total_paused_duration)
-```
-
-This means the clock is consistent for every viewer regardless of when they open the app, whether they reload, or whether they had a connection drop. There is no drift.
+One live channel per run keeps games, courts, the queue, and the run itself in sync for every connected viewer. There is no polling and no client-held score state.
 
 ---
 
@@ -159,9 +144,9 @@ Player      → guest, name only, no account needed
 Spectator   → guest, read only, no account needed
 ```
 
-When a guest creates an account, their previous guest scores are not backfilled. Stats are tracked from signup onwards. The CTA to create an account is shown subtly after a game, once the player has already seen their points — not before.
+When a guest creates an account, their previous guest scores are not backfilled. Stats are tracked from signup onwards.
 
-New hosts confirm their email before signing in: signup sends a confirmation link and lands on a check-your-email screen. Confirming the link verifies the account and triggers a one-time welcome email.
+New hosts confirm their email before signing in: signup sends a confirmation link and lands on a check-your-email screen. Confirming the link verifies the account and triggers a one-time welcome email. A signed-in user can request host access from the avatar menu or the Account page; the request needs a display name.
 
 ---
 
@@ -178,13 +163,14 @@ Check Your Email
 └── after signup — confirmation link sent, verify before sign-in
 
 Create Run
-└── name, location, format → session code generated
+└── name, location, run mode, rotation style, courts, score goal, win by two
+    → session code generated
 
-Run Lobby — Host
-└── QR front and center, queue preview, Start Game
+Courts Dashboard (Lobby)
+└── court cards, Next up, player status banner; QR for the host
 
-Run Lobby — Player / Spectator
-└── position in queue, live status
+Court Assignment — Host   (courts/[courtId]/assign)
+└── proposed four players, adjust, confirm → game starts
 
 Bottom Nav (persistent during a run)
 ├── Game
@@ -192,64 +178,40 @@ Bottom Nav (persistent during a run)
 └── Lobby
 
 Queue Page — Host
-└── On Court / Up Next / Waiting sections
-    per-player: games played, reorder, mark out, reinstate, remove, rename
+└── per-player: mark out, reinstate, remove
 
 Queue Page — Player / Spectator
-└── read-only, see full queue and games played per player
+└── read-only, see the full queue
 
 Payment — Host
-└── roster with paid / unpaid toggle per player for collecting the court fee
-
-Team Assignment — Host
-└── next 10 pulled, drag to assign, scramble button, confirm → game starts
-    (goal and time limit come from the run settings — no per-game setup)
+└── roster with paid / unpaid toggle per player
 
 Game — Host View
-└── live score, player names, tap to score, share button (QR), end game
+└── live score, tap to score, undo, end game
 
 Game — Spectator / Player View
-└── live score, who scored, position in queue
+└── live score, position in queue
 
-Game Results
-└── final score, per-player points, updated queue, Start Next Game
+Past Game View (lobby/[gameId])
+└── final score and winner
 
-Run Lobby (Feed)
-└── live game pinned to top, past games listed below, tap to view
-
-Past Game View
-└── final score, duration (if timed), per-player points per team
+Run Results — Host
+└── post-run summary
 
 Run History — Account holders
-└── all past runs, all games, per-player points
+└── all past runs and their games
 
-Account (optional)
-└── stats across all runs from signup onwards
+Account
+└── profile and host request
 ```
 
 ---
 
 ## Intentionally Out of Scope
 
-- Shot clock
-- Timeouts
-- Foul tracking
-- Quarters and halves
-- Substitutions mid-game
+- Game clock and time limits
+- Point systems and serving tracking
+- Ties
 - Tournament brackets
 - Co-hosts or host transfer
 - Grouping players in queue together
-
----
-
-## Build Order
-
-1. Create run + QR + queue (join flow)
-2. Queue management page
-3. Team assignment (drag, scramble, confirm)
-4. Live game screen (scoring)
-5. Server-side clock (timed games)
-6. Game results + next game flow
-7. Run lobby (feed) + past game view
-8. Run history
-9. Optional accounts + stat tracking

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createRunSchema } from "@/validators";
 import { createRun, getRunsForUser, getActiveRunByHostId } from "@/services/run.service";
 import { getHostStatus } from "@/services/host-request.service";
-import { apiSuccess, apiError } from "@/lib/api/response";
+import { apiSuccess, apiError, handleApiError } from "@/lib/api/response";
 
 export async function GET() {
   const supabase = await createClient();
@@ -52,10 +52,13 @@ export async function POST(req: NextRequest) {
     return apiError("VALIDATION", "Invalid request payload", 400, result.error.flatten());
   }
 
-  const run = await createRun({
-    ...result.data,
-    hostId: user.id,
-  });
-
-  return apiSuccess(run, 201);
+  try {
+    const run = await createRun({
+      ...result.data,
+      hostId: user.id,
+    });
+    return apiSuccess(run, 201);
+  } catch (err) {
+    return handleApiError(err);
+  }
 }

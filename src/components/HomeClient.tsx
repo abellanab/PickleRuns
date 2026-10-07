@@ -18,13 +18,13 @@ export type HomeClientProps = {
 
 const FEATURES = [
   { icon: Zap, title: "Live Scoring", body: "Real-time score, synced to every phone on the court." },
-  { icon: RotateCw, title: "Queue Rotation", body: "Winners stay, losers rotate — automatic." },
-  { icon: Users, title: "Team Assignment", body: "Balanced squads in a single tap." },
+  { icon: RotateCw, title: "Queue Rotation", body: "Paddle stacking queue — winners stay, the next pair steps in." },
+  { icon: Users, title: "Doubles Pairing", body: "Doubles pairs set in a single tap." },
   { icon: History, title: "Run History", body: "Every game and result, saved." },
 ] as const;
 
 const STEPS = [
-  { n: "01", title: "Host starts a run", body: "Set the format, score goal, and game clock." },
+  { n: "01", title: "Host starts a run", body: "Choose the mode, courts and target score." },
   { n: "02", title: "Players join by code", body: "Share the run code — they jump in from their phone." },
   { n: "03", title: "Game runs live", body: "Score, queue, and rotation update for everyone, instantly." },
 ] as const;
@@ -38,9 +38,9 @@ const NAV_LINKS = [
 const MARQUEE = [
   "Live Scoring",
   "Queue Rotation",
-  "Team Balance",
+  "Doubles Pairing",
   "Run History",
-  "Winners Stay",
+  "Paddle Stacking",
   "Synced Courtside",
 ] as const;
 
@@ -107,7 +107,7 @@ function SectionLabel({ n, label, tone = "muted" }: { n: string; label: string; 
   );
 }
 
-// BallRuns logo mark — accent chip with a basketball glyph (source: /public/logo.svg).
+// PickleRuns logo mark — accent chip with a pickleball glyph (source: /public/logo.svg).
 function LogoMark({ className }: { className?: string }) {
   return (
     <span className={cn("grid place-items-center rounded-[7px] bg-accent", className)}>
@@ -127,7 +127,7 @@ function HeroBoard() {
       {/* floating accent chips */}
       <div className="animate-float-soft pointer-events-none absolute -left-6 top-14 z-20 hidden xl:flex items-center gap-1.5 rounded-full border border-border-accent bg-bg-raised px-3 py-1.5 shadow-lg shadow-black/40">
         <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-        <span className="font-display text-[11px] font-extrabold uppercase tracking-[0.12em] text-accent">+2 · Score</span>
+        <span className="font-display text-[11px] font-extrabold uppercase tracking-[0.12em] text-accent">+1 · Point</span>
       </div>
       <div
         className="animate-float-soft pointer-events-none absolute -right-5 bottom-20 z-20 hidden xl:flex items-center gap-1.5 rounded-full border border-border bg-bg-raised px-3 py-1.5 shadow-lg shadow-black/40"
@@ -153,22 +153,22 @@ function HeroBoard() {
           <div className="flex items-center justify-between rounded-lg border border-border-accent bg-accent-glow px-4 py-3">
             <div className="flex items-center gap-2.5">
               <span className="h-2.5 w-2.5 rounded-full bg-team-a" />
-              <span className="font-display text-[17px] font-extrabold uppercase tracking-[0.04em] text-text-primary">Team A</span>
+              <span className="font-display text-[17px] font-extrabold uppercase tracking-[0.04em] text-text-primary">Pair A</span>
             </div>
-            <span className="font-display text-[38px] font-black leading-none tabular-nums text-accent">21</span>
+            <span className="font-display text-[38px] font-black leading-none tabular-nums text-accent">11</span>
           </div>
 
           <div className="mt-2.5 flex items-center justify-between rounded-lg border border-border bg-bg-raised px-4 py-3">
             <div className="flex items-center gap-2.5">
               <span className="h-2.5 w-2.5 rounded-full bg-text-secondary" />
-              <span className="font-display text-[17px] font-extrabold uppercase tracking-[0.04em] text-text-secondary">Team B</span>
+              <span className="font-display text-[17px] font-extrabold uppercase tracking-[0.04em] text-text-secondary">Pair B</span>
             </div>
-            <span className="font-display text-[38px] font-black leading-none tabular-nums text-text-secondary">18</span>
+            <span className="font-display text-[38px] font-black leading-none tabular-nums text-text-secondary">9</span>
           </div>
 
           <div className="mt-4 flex items-center justify-between">
-            <span className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-text-muted">First to 21</span>
-            <span className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-accent">Match point</span>
+            <span className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-text-muted">First to 11</span>
+            <span className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-accent">Game point</span>
           </div>
         </div>
 
@@ -206,7 +206,7 @@ export default function HomeClient({ initialUser }: HomeClientProps) {
       {/* ───────── HEADER ───────── */}
       <header className="sticky top-0 z-50 border-b border-border/70 bg-bg/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 lg:px-10">
-          <Link href="/" aria-label="BallRuns home" className="flex items-center">
+          <Link href="/" aria-label="PickleRuns home" className="flex items-center">
             <LogoMark className="h-9 w-9" />
           </Link>
 
@@ -263,7 +263,7 @@ export default function HomeClient({ initialUser }: HomeClientProps) {
               className="animate-fade-up mt-5 font-display text-[64px] font-black uppercase leading-[0.82] tracking-[-0.025em] text-text-primary sm:text-[88px] lg:text-[104px]"
               style={{ animationDelay: "0.05s" }}
             >
-              Ball
+              Pickle
               <br />
               Runs
             </h1>
@@ -273,7 +273,7 @@ export default function HomeClient({ initialUser }: HomeClientProps) {
               className="animate-fade-up mt-6 max-w-[30rem] font-body text-[16px] leading-[1.55] text-text-secondary lg:text-[18px]"
               style={{ animationDelay: "0.15s" }}
             >
-              Pickup basketball, organized. Live score, queue, and rotation —
+              Pickup pickleball, organized. Live score, courts, and paddle queue —
               <span className="text-text-primary"> synced to every phone at the court.</span>
             </p>
 
@@ -365,7 +365,7 @@ export default function HomeClient({ initialUser }: HomeClientProps) {
           <Reveal>
             <SectionLabel n="02" label="How it works" />
             <h2 className="mt-4 font-display text-[34px] font-black uppercase leading-[0.95] tracking-[-0.01em] text-text-primary lg:text-[46px]">
-              Three steps.<br />Tip-off.
+              Three steps.<br />Game on.
             </h2>
           </Reveal>
 
@@ -432,7 +432,7 @@ export default function HomeClient({ initialUser }: HomeClientProps) {
                     "transition-all duration-150 hover:-translate-y-px active:scale-[0.98]",
                   )}
                 >
-                  {signedIn ? "Go to Dashboard" : "Request to Host"}
+                  Request to Host
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -451,7 +451,7 @@ export default function HomeClient({ initialUser }: HomeClientProps) {
                 premium tournament system is in the works.
               </p>
               <a
-                href="mailto:lysander.uy@gmail.com?subject=BallRuns%20%E2%80%94%20League%20%2F%20Tournament%20interest&body=Hi%20Lysander%2C%0D%0A%0D%0AWe%20are%20interested%20in%20running%20a%20league%20or%20tournament%20on%20BallRuns.%20Here%27s%20a%20bit%20about%20us%3A%0D%0A"
+                href="mailto:lysander.uy@gmail.com?subject=PickleRuns%20%E2%80%94%20League%20%2F%20Tournament%20interest&body=Hi%20Lysander%2C%0D%0A%0D%0AWe%20are%20interested%20in%20running%20a%20league%20or%20tournament%20on%20PickleRuns.%20Here%27s%20a%20bit%20about%20us%3A%0D%0A"
                 className={cn(
                   "mt-6 flex h-14 items-center justify-center gap-2.5 rounded-md border border-border-accent text-accent lg:mt-auto",
                   "font-display text-[15px] font-extrabold uppercase tracking-[0.1em]",
@@ -478,11 +478,11 @@ export default function HomeClient({ initialUser }: HomeClientProps) {
               <div className="flex items-center gap-2.5">
                 <LogoMark className="h-7 w-7" />
                 <span className="font-display text-[20px] font-black uppercase leading-none tracking-[0.02em] text-text-primary">
-                  BallRuns
+                  PickleRuns
                 </span>
               </div>
               <span className="font-body text-[13px] leading-[1.5] text-text-secondary">
-                Pickup basketball, organized. Built for the court.
+                Pickup pickleball, organized. Built for the court.
               </span>
             </div>
 
@@ -522,7 +522,7 @@ export default function HomeClient({ initialUser }: HomeClientProps) {
               <span className="font-semibold text-text-primary">Benedict Abellana</span>
             </span>
             <span className="font-display text-[10px] font-bold uppercase tracking-[0.14em] text-text-muted">
-              © {new Date().getFullYear()} BallRuns
+              © {new Date().getFullYear()} PickleRuns
             </span>
           </div>
         </div>

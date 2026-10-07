@@ -68,7 +68,7 @@ export function SessionTopbar({ run, loading, badge, backHref, exitHref, menuAct
           ) : (
             <>
               <span className="font-display text-[11px] font-bold tracking-[0.12em] uppercase text-text-muted truncate">
-                {run?.location ?? "Basketball Run"}
+                {run?.location ?? "Pickleball Run"}
               </span>
               <span className="font-display text-[20px] font-black tracking-[0.02em] uppercase text-text-primary leading-none truncate">
                 {run?.name ?? "—"}

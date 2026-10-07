@@ -23,12 +23,16 @@ export function BottomNav() {
       active: pathname.includes("/lobby"),
       icon: <Home className="w-5 h-5" />,
     },
-    {
-      href: `/runs/${code}/queue`,
-      label: "Queue",
-      active: pathname.includes("/queue"),
-      icon: <List className="w-5 h-5" />,
-    },
+    ...(run?.runMode !== "score_only"
+      ? [
+          {
+            href: `/runs/${code}/queue`,
+            label: "Queue",
+            active: pathname.includes("/queue"),
+            icon: <List className="w-5 h-5" />,
+          },
+        ]
+      : []),
     ...(isHost
       ? [
           {

@@ -110,12 +110,12 @@ const html = `
   <div style="background-color:#0e0f0c;margin:0;padding:24px 0;font-family:Barlow,Arial,Helvetica,sans-serif;">
     <div style="margin:0 auto;padding:32px;max-width:480px;background-color:#161710;border:1px solid #2a2c22;border-radius:16px;">
       <div style="margin-bottom:24px;">
-        <div style="font-family:'Barlow Condensed',Arial,sans-serif;font-size:30px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;color:#f0f0e8;line-height:1;">BALLRUNS</div>
+        <div style="font-family:'Barlow Condensed',Arial,sans-serif;font-size:30px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;color:#f0f0e8;line-height:1;">PICKLERUNS</div>
         <div style="width:48px;height:3px;background-color:#c8f135;border-radius:2px;margin-top:10px;"></div>
       </div>
       <div style="font-family:'Barlow Condensed',Arial,sans-serif;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:0.3px;color:#f0f0e8;margin:0 0 16px;">You're in, <span style="color:#c8f135;">${approvedName}</span>.</div>
       <p style="font-size:15px;line-height:24px;color:#8a8c7a;margin:0 0 14px;">Your account is approved to host. You can now create a run, set the format, and manage the queue and score from your phone.</p>
-      <p style="font-size:15px;line-height:24px;color:#8a8c7a;margin:0 0 14px;">Head to BallRuns, create a run, and share the code to get players in.</p>
+      <p style="font-size:15px;line-height:24px;color:#8a8c7a;margin:0 0 14px;">Head to PickleRuns, create a run, and share the code to get players in.</p>
       <div style="border-top:1px solid #2a2c22;margin:24px 0;"></div>
       <div style="font-family:'Barlow Condensed',Arial,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#4a4c3e;margin:0;">See you on the court.</div>
     </div>
@@ -127,7 +127,7 @@ try {
   const { error } = await resend.emails.send({
     from: fromEmail,
     to: approvedTo,
-    subject: "You're approved to host on BallRuns",
+    subject: "You're approved to host on PickleRuns",
     html,
   });
   if (error) {

@@ -1,4 +1,4 @@
-# BallRuns — Claude Instructions
+# PickleRuns — Claude Instructions
 
 This file governs every AI session in this repo. Read it fully before touching any file.
 
@@ -48,28 +48,35 @@ app/
 │   └── actions.ts                  "use server" — Supabase auth SDK direct (the only exception)
 ├── (protected)/                    Auth-guarded — middleware redirects guests
 │   ├── create-run/
+│   ├── dashboard/                  Host dashboard
 │   ├── history/                    All runs for the signed-in host
 │   └── account/
 ├── runs/[code]/
 │   ├── layout.tsx                  Passthrough — no data fetch
 │   ├── join/                       Guest join flow
-│   ├── team-assignment/
-│   ├── results/
+│   ├── courts/[courtId]/assign/    Host picks the four players for a court (fill proposal + manual swap)
+│   ├── (host)/results/             Post-run summary — host, no bottom nav
 │   └── (session)/                  Pages with bottom nav
 │       ├── layout.tsx              BottomNav wrapper
-│       ├── game/                   Live game management
+│       ├── game/                   Live game management (tap-to-score)
 │       ├── queue/                  Queue view
-│       ├── feed/                   Run feed (game list)
-│       └── feed/[gameId]/          Single game detail
+│       ├── payment/                Court-fee confirmation (host)
+│       ├── lobby/                  Courts dashboard (court cards, Next up, player status banner)
+│       └── lobby/[gameId]/         Single game detail
 └── api/                            All HTTP endpoints — thin: auth + Zod + delegate
-    ├── auth/callback/
+    ├── auth/                       callback (PKCE) + confirm (token-hash)
+    ├── host-requests/
+    ├── invites/[token]/
     ├── runs/
     │   └── [code]/
     │       ├── status/
+    │       ├── stats/
+    │       ├── courts/                  GET overview · POST add court
+    │       │   └── [courtId]/           DELETE idle court
+    │       │       └── fill-proposal/   GET proposed four players
     │       ├── games/
     │       │   └── [gameId]/            GET detail · PATCH end game
-    │       │       ├── clock/
-    │       │       └── score/
+    │       │       └── score/           POST point · PATCH undo (void)
     │       └── queue/
     │           └── [entryId]/
     └── users/
@@ -79,21 +86,26 @@ components/
 └── ui/                             Generic primitives + app-specific composed pieces
 
 hooks/                              Client-side React hooks (use-*.ts)
+                                    use-courts (courts overview, fill proposal, add/remove court)
+                                    use-run-realtime (single per-run Realtime channel)
 stores/                             Zustand stores — UI-only state ONLY (never API data)
                                     Naming: <thing>.store.ts
+                                    court-assignment.store.ts (draft for the court assign screen)
 lib/
 ├── api/
 │   ├── client.ts                   apiGet/apiPost/apiPatch/apiDelete — ApiResponse unwrap
 │   └── response.ts                 apiSuccess · apiError · handleApiError
 ├── env.ts                          Zod-validated env vars (server only, lazy)
+├── queue-pairs.ts                  pickNextGroup — pure; keeps pairs that just played together as partners
 ├── query/                          QueryClient setup (wired in app/layout.tsx)
 ├── supabase/
 │   ├── client.ts                   Browser client
 │   ├── server.ts                   Server client
 │   └── proxy.ts                    Middleware session refresh
-└── utils.ts                        Pure utility functions (cn, formatTime, etc.)
+└── utils.ts                        Pure utility functions (cn, etc.)
 
 services/                           Business logic + DB access (*.service.ts)
+                                    run · game · queue · court (courts overview, add/remove, fill proposal) · host-request · invite · email
 validators/                         Zod schemas (*.validator.ts) — input source of truth
 types/
 ├── api.ts                          ApiResponse<T> envelope
@@ -106,6 +118,7 @@ db/
     ├── enums.ts                    pgEnum definitions
     ├── users.ts                    users table
     ├── runs.ts                     runs table
+    ├── courts.ts                   courts table
     ├── queue-entries.ts            queueEntries table
     ├── games.ts                    games table
     ├── game-players.ts             gamePlayers table
@@ -157,7 +170,7 @@ db (src/db, Drizzle) / Supabase
 - All DB queries live here (Drizzle only — no raw SQL unless wrapped in a migration).
 - No `NextRequest`, `NextResponse`, `cookies()`, or any HTTP concept.
 - No Zod — validation happens in API routes before services are called. Services trust their inputs.
-- Throw typed errors (`GameNotFoundError`, `DuplicateScoreError`, `OngoingGameError`, `InvalidEntryIdsError`, `PlayerNotInGameError`, etc.) for cases the route should map to specific HTTP statuses. `handleApiError` does the mapping.
+- Throw typed errors (`GameNotFoundError`, `GameCompletedError`, `DuplicateScoreError`, `InvalidEntryIdsError`, `PlayerNotInGameError`, `PlayerUnavailableError`, `InvalidRosterError`, `WinnerRequiredError`, `CourtNotFoundError`, `CourtOccupiedError`, `LastCourtError`, `CourtLimitError`, `CourtHasHistoryError`, `HostAlreadyHasActiveRunError`, `RunModeNotSupportedError`, `RunCompletedError`, etc.) for cases the route should map to specific HTTP statuses. `handleApiError` does the mapping.
 - Pure functions: take typed inputs, return typed outputs. Scope every query to the authenticated `userId` passed in.
 - One file per resource: `run.service.ts`, `queue.service.ts`, `game.service.ts`, etc.
 
@@ -178,7 +191,7 @@ db (src/db, Drizzle) / Supabase
 
 ### Zustand stores (`src/stores/<thing>.store.ts`)
 - **UI-only state ONLY.** Never mirror API data into a store. The state may cross component trees, but it must not come from a route handler.
-- Draft / ephemeral state (team-assignment draft, undo toasts, drag previews) belongs here.
+- Draft / ephemeral state (court-assignment draft, undo toasts, drag previews) belongs here.
 
 ### Server state vs client state
 - API data → TanStack Query (`src/hooks`). Invalidate on Realtime events; never set `useState` to hold a server payload.
@@ -202,7 +215,7 @@ db (src/db, Drizzle) / Supabase
 - `lib/env.ts` — Zod-validated env vars. Replaces `process.env.X!` non-null assertions. Lazy, server-only.
 - `lib/query/` — `QueryClient` setup. Imported by `app/layout.tsx`.
 - `lib/supabase/` — browser client, server client, middleware session refresh. Used by routes, middleware, and the auth actions.
-- `lib/utils.ts` — pure utility functions (`cn`, `formatTime`, `generateRunCode`, `deriveInitials`).
+- `lib/utils.ts` — pure utility functions (`cn`, `generateRunCode`, `deriveInitials`).
 
 ---
 
@@ -210,7 +223,7 @@ db (src/db, Drizzle) / Supabase
 
 | Role | Account | Access |
 |---|---|---|
-| Host | Required | Full control — create run, manage queue, score, clock |
+| Host | Required | Full control — create run, manage courts and queue, score |
 | Player | Guest (optional) | Join queue, view live score |
 | Spectator | Guest | Read-only |
 
@@ -228,7 +241,14 @@ These are non-negotiable — violations break the app silently.
 
 - **`games.score_a` and `games.score_b` are trigger-maintained.** Never write them from application code. Only `score_events` inserts/voids affect them.
 - **Queue ordering is the integer `position` column.** Lower `position` = front of queue; read order with `ORDER BY position ASC`. Never use `ORDER BY joined_at` to determine queue order. (The old `after_entry_id` linked list was dropped in migration `1781020049924`.)
-- **Queue rotation is trigger-maintained.** `trg_rotate_queue_on_game_complete` rewrites `queue_entries.position` on every game → `completed` transition (rotates the losing team or all players per `run_format`). Never rotate the queue from application code — game completion is the only path that may reorder it.
+- **Queue rotation is trigger-maintained.** `trg_rotate_queue_on_game_complete` (function `rotate_queue_on_game_complete`) rewrites `queue_entries.position` on every game → `completed` transition, per `runs.rotation_style`. It skips `score_only` runs and takes `pg_advisory_xact_lock(hashtext(run_id::text), 2)` — the same key `joinQueue` uses. `rotate_all`: all four players go to the back, winners ahead of losers (old relative order within each group; a NULL winner keeps the old order). `winner_stays`: only the losing side goes to the back; winners keep their positions. `removed` entries never move. Never rotate the queue from application code — game completion is the only path that may reorder it.
+- **A game starts when it is assigned.** There is no pending-then-start step in the flow: assigning four players to a court creates the game as `active`. Pairs that just played stay partners when drawn into the next game (partner derived from the most recent game; `pickNextGroup` in `src/lib/queue-pairs.ts`).
+- **`runs.run_mode`** (`score_only` | `queue_only` | `score_and_queue`) decides behavior. `score_only` has no queue (host sets the matches per court and scores). `queue_only` has the queue and court rotation but no points — the host ends each match and picks the winner when needed. `score_and_queue` does both. Other run settings: `rotation_style` (`rotate_all` | `winner_stays`), `court_count`, `score_goal` (11 or 15, default 11), `win_by_two`.
+- **Courts.** Each run has `court_count` rows in `courts` (unique `(run_id, number)`). `games.court_id` is NOT NULL, and the partial unique index `uq_games_court_open` allows at most one `pending`/`active` game per court. The host can add courts (max 8) and remove idle courts (courts with history cannot be removed).
+- **One open run per host.** `uq_runs_one_open_per_host` (partial unique on `host_id` where status is `lobby`/`active`); a second create surfaces as `HostAlreadyHasActiveRunError`.
+- **Scoring is rally scoring.** Each tap is exactly one `score_events` row with `points = 1` for the tapped player's side. Undo sets `voided_at` — never delete. The game ends automatically at `score_goal` (and a lead of 2 when `win_by_two`). `games.winner` is `team_a` | `team_b` | NULL (no tie value). DB values stay `team_a`/`team_b`; the UI says Side A / Side B.
+- **Names are required** for every player (`queue_entries.display_name` is NOT NULL).
+- **Host requests.** `host_requests.display_name` is required; `decided_at` is stamped by trigger `trg_stamp_host_request_decision` when status moves from `pending` to `approved`/`denied`. Do not set it from app code.
 - **Never hard-delete `queue_entries` with game history.** `game_players` and `score_events` have `ON DELETE RESTRICT` on `queue_entry_id`. Always set `status = 'removed'` instead.
 - **`users.id` mirrors `auth.users.id`.** The row is created by trigger, not by the app. Never insert into `users` manually.
 - **`session_code` is the public identifier for a run.** URLs use `[code]` not `[id]`.
@@ -281,8 +301,9 @@ if (!result.success) {
 ## Supabase Realtime
 
 - Realtime subscriptions belong in `src/hooks/` — never in Server Components or API routes.
-- Subscribe to the `games` table for live score updates (the trigger keeps it in sync).
-- Subscribe to `queue_entries` for live queue updates.
+- One channel per run (`use-run-realtime`) subscribes to `games`, `courts`, `queue_entries`, and `runs`. Do not add per-screen channels for these tables.
+- Those four tables are in the `supabase_realtime` publication (migration `enable-realtime-tables`); `courts` has `REPLICA IDENTITY FULL` so DELETE events carry `run_id`. A new table needs its own migration adding it to the publication before it can be subscribed to.
+- `games` events cover live scores (the trigger keeps `score_a`/`score_b` in sync); `queue_entries` events cover live queue updates.
 - Always unsubscribe on component unmount — use the `useEffect` cleanup return to call `supabase.removeChannel`.
 
 ---
@@ -326,5 +347,7 @@ Note: Next.js 16 replaces `middleware.ts` with `proxy.ts`. The project is on Nex
 - Do not mirror API data into a Zustand store — use TanStack Query
 - Do not use `ORDER BY joined_at` for queue ordering — the integer `position` column is the order
 - Do not rotate the queue from app code — the game-completion trigger owns `queue_entries.position`
+- Do not reintroduce a game clock, time limit, `run_format`, point systems (1s/2s/3s), serving team, or a `tie` winner — scoring is rally scoring, one point per tap
+- Do not reintroduce the team-assignment screen or `team-draft.store.ts` — court assignment is `courts/[courtId]/assign` with `court-assignment.store.ts`
 - Do not add comments explaining what code does — only add comments explaining why when the reason is non-obvious
 - Do not create new files unless the task requires it (a restructuring task is the one exception)

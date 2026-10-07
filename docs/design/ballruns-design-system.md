@@ -1,12 +1,15 @@
-# BallRuns — Brand Guidelines & Design System
+# PickleRuns — Brand Guidelines & Design System
+
+> **Note.** This system was authored during the basketball era. The visual language (colors, type, spacing) still applies. References to the game clock, clock bar, and the basketball court motif are legacy: PickleRuns has no clock or time limit and uses rally scoring (one point per tap).
+
 
 ---
 
 ## 1. Brand Foundation
 
-### What BallRuns Is
+### What PickleRuns Is
 
-A live basketball session manager built for how open runs actually work. The host runs everything from one screen. Players join with a scan. Everyone sees the score in real time — including people still on their way.
+A live pickleball doubles court manager built for how open play actually works. The host runs everything from one screen. Players join with a scan. Everyone sees the score in real time — including people still on their way.
 
 ### The Design Problem
 
@@ -18,10 +21,10 @@ The host is holding a phone at a court. One hand. Sweaty. Sun possibly in their 
 Every decision — color, type weight, size, contrast — is filtered through one question: does this work at distance, in direct sunlight, on a mid-range screen?
 
 **The numbers are the product.**
-Scores, points, time. These are the information that matters. Everything else is infrastructure supporting them.
+Scores, points, courts. These are the information that matters. Everything else is infrastructure supporting them.
 
 **Native to the court, not to the web.**
-Aesthetic references come from physical basketball — gym scoreboards, jersey numbers, painted court lines, laminated brackets — not from SaaS design trends or Dribbble.
+Aesthetic references come from physical courts — scoreboards, painted court lines, paddle stacks at the net — not from SaaS design trends or Dribbble.
 
 **No decoration without purpose.**
 Every visual element earns its place. Textures, borders, and color only appear when they carry information or reinforce hierarchy.
@@ -59,12 +62,12 @@ Dark base with a single high-visibility accent. The background recedes, the cont
 `#c8f135` — electric yellow-green — was chosen for three reasons:
 
 1. **High visibility by nature.** This tone is used in safety signage and sports equipment for a reason. It reads in any lighting condition.
-2. **Basketball-native.** The color of a freshly painted three-point arc under gym lights. A new tennis ball at the court.
+2. **Court-native.** The color of a freshly painted court line under gym lights. A new ball on the court.
 3. **Distinctive.** Nobody in this product category is using it. It won't be confused with anything else.
 
 ### Color Rules
 
-- The accent touches **active states, leading scores, the game clock, and score events.** Nothing else.
+- The accent touches **active states, leading scores, and score events.** Nothing else.
 - Team B is never given a competing accent color. They stay in `--text-secondary`. The distinction is hierarchy, not rivalry.
 - Red (`#ff4040` range) is reserved exclusively for **destructive actions** — End Game, delete, remove. It does not appear anywhere else.
 - Never use pure black (`#000000`) or pure white (`#ffffff`) as backgrounds or primary text. The warm undertones in `--bg` and `--text-primary` are intentional.
@@ -159,11 +162,10 @@ The app is a single-column mobile layout, max-width `480px`, centered. This is a
 The game screen establishes a vertical hierarchy that all other screens should honor:
 
 1. **Scoreboard** — dominant, takes the most vertical and visual space
-2. **Clock** (when present) — secondary hero element
-3. **Progress bar** — contextual, compact
-4. **Recent log** — supporting, stays minimal (3 entries max)
-5. **Player cards** — action layer, equal-weight grid
-6. **Bottom bar** — persistent, always visible
+2. **Progress bar** — contextual, compact
+3. **Recent log** — supporting, stays minimal (3 entries max)
+4. **Player cards** — action layer, equal-weight grid
+5. **Bottom bar** — persistent, always visible
 
 ---
 
@@ -200,7 +202,9 @@ line-height: 0.88;
 letter-spacing: -0.02em;
 ```
 
-### Clock Bar
+### Clock Bar (legacy, removed)
+
+PickleRuns has no game clock; this component is not used.
 
 A contained row with background `--bg-surface` and a `1px` border. Clock display left, controls right. The clock number is accent-colored at rest. Turns `#ff6b35` (orange-red) with a pulse animation when ≤60 seconds remain.
 
@@ -365,7 +369,7 @@ Color inherits from parent (`currentColor`). Never hardcoded.
 
 ## 9. The Court Motif
 
-Basketball-native details that appear intentionally, not as decoration:
+Court-native details that appear intentionally, not as decoration:
 
 **The court center circle** — a visual divider between the two team scores in the scoreboard. A circle with a center dot, flanked by horizontal lines. References the center court marking. Never labeled, never explained — understood by the audience.
 

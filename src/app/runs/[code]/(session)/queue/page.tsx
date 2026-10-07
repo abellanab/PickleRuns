@@ -102,6 +102,24 @@ export default function QueuePage() {
     });
   }
 
+  if (run?.runMode === "score_only") {
+    return (
+      <>
+        <SessionTopbar
+          run={run}
+          loading={loading}
+          backHref={`/runs/${code}/lobby`}
+          showEndRun={canManageRun}
+        />
+        <div className="flex-1 flex items-center justify-center px-5 text-center">
+          <span className="font-display text-[13px] font-bold tracking-[0.08em] uppercase text-text-muted">
+            This run has no queue
+          </span>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <SessionTopbar
@@ -171,6 +189,11 @@ export default function QueuePage() {
                   <span className="font-display text-[16px] font-extrabold uppercase text-text-primary flex-1 truncate tracking-[0.02em]">
                     {entry.displayName}
                   </span>
+                  {entry.courtNumber !== null && (
+                    <span className="font-display text-[11px] font-bold tracking-[0.08em] uppercase text-accent bg-accent-glow border border-border-accent px-2 py-0.5 rounded-sm whitespace-nowrap">
+                      Court {entry.courtNumber}
+                    </span>
+                  )}
                   <span className="font-display text-[12px] font-semibold text-text-muted whitespace-nowrap">
                     {entry.gamesPlayed} {entry.gamesPlayed === 1 ? "game" : "games"}
                   </span>

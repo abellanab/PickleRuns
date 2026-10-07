@@ -1,4 +1,6 @@
-# BallRuns — Component Reference
+# PickleRuns — Component Reference
+
+> **Note.** The shipped HTML mockups this file documents (`docs/references/*.html`) are legacy basketball-era mockups kept for visual reference. Components marked **Legacy** below describe features that no longer exist in PickleRuns (game clock, time limit, team assignment screen, run format). Pickleball uses rally scoring (one point per tap), a courts dashboard, and `courts/[courtId]/assign` for filling a court.
 
 > Source of truth for all components built across all screens. Every component here exists in a shipped HTML file. Nothing assumed. Do not add components that haven't been built yet.
 
@@ -443,6 +445,8 @@ setTimeout(() => scoreEl.classList.remove('scored'), 300);
 ---
 
 ## 6. Clock Bar
+
+> **Legacy (basketball-era).** PickleRuns has no game clock or time limit; this component is not used.
 
 Present only when the game has a time limit. Hidden entirely when there's no clock — do not render an empty bar.
 
@@ -1103,6 +1107,8 @@ Used in the Lobby — host view. The hero of the screen, front and center.
 
 ## 14. Format Strip
 
+> **Legacy (basketball-era).** `run_format` was removed; PickleRuns shows run mode and rotation style instead.
+
 Compact info row used in the Lobby to show the current run format. Includes a change action.
 
 ### HTML
@@ -1468,6 +1474,8 @@ Per-row action sheet. Triggered by the ⋮ button on queue items. Anchors near t
 
 ## 18. Assignment Card
 
+> **Legacy (basketball-era).** The team assignment screen was replaced by the court assign screen (`courts/[courtId]/assign`).
+
 Draggable player card used on the Team Assignment screen. Different from the Player Card — no tap-to-score, uses drag or arrow button to move between teams.
 
 ### HTML
@@ -1569,6 +1577,8 @@ Draggable player card used on the Team Assignment screen. Different from the Pla
 
 ## 19. Balance Bar
 
+> **Legacy (basketball-era).** Belonged to the removed team assignment screen.
+
 Shows team split balance on Team Assignment screen. Updates live as players move.
 
 ### HTML
@@ -1606,7 +1616,7 @@ Shows team split balance on Team Assignment screen. Updates live as players move
 
 ## 20. Option Pills
 
-Single-select group. Used on Create Run for Format selection.
+Single-select group. Used on Create Run for run mode, rotation style, and score goal selection (the original mockup used it for the removed run format).
 
 ### HTML
 
@@ -1737,7 +1747,7 @@ function adjustGoal(delta) {
 
 ## 22. Toggle Switch
 
-On/off toggle. Used for Game Clock on Create Run. Reveals dependent content when on.
+On/off toggle. Used for win-by-two on Create Run (the original mockup used it for the removed Game Clock). Reveals dependent content when on.
 
 ### HTML
 
@@ -2081,7 +2091,7 @@ Player-only strip showing their position in the queue. Hidden for spectators.
 | 3 | Live Badge | Spectator, Feed | No |
 | 4 | Icon Button | Game, Lobby, Queue | Yes |
 | 5 | Scoreboard | Game, Spectator | JS-animated |
-| 6 | Clock Bar | Game, Spectator | Yes — toggle |
+| 6 | Clock Bar (legacy, removed) | Game, Spectator | Yes — toggle |
 | 7 | Score Progress | Game, Spectator | JS-updated |
 | 8 | Section Header | Game, Lobby, Team Assignment, Queue, Results, Feed | Optional |
 | 9 | Score Log | Game, Spectator | JS-managed |
@@ -2089,12 +2099,12 @@ Player-only strip showing their position in the queue. Hidden for spectators.
 | 11 | Player Card | Game | Yes — tap to score |
 | 12 | Bottom Bar | Game, Lobby, Team Assignment, Results, Create Run | Yes |
 | 13 | QR Block | Lobby | No |
-| 14 | Format Strip | Lobby | Yes |
+| 14 | Format Strip (legacy, removed) | Lobby | Yes |
 | 15 | Queue Item | Lobby, Queue | Yes — drag, actions |
 | 16 | Stats Strip | Queue | No |
 | 17 | Context Menu | Queue | Yes |
-| 18 | Assignment Card | Team Assignment | Yes — drag, arrow |
-| 19 | Balance Bar | Team Assignment | JS-updated |
+| 18 | Assignment Card (legacy, removed) | Team Assignment | Yes — drag, arrow |
+| 19 | Balance Bar (legacy, removed) | Team Assignment | JS-updated |
 | 20 | Option Pills | Create Run | Yes — single select |
 | 21 | Stepper | Create Run | Yes — +/− |
 | 22 | Toggle Switch | Create Run | Yes |

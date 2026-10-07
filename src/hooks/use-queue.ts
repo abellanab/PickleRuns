@@ -9,6 +9,7 @@ export type QueueEntry = {
   status: "waiting" | "marked_out" | "removed";
   paid: boolean;
   gamesPlayed: number;
+  courtNumber: number | null;
 };
 
 export type QueueData = {
@@ -81,7 +82,7 @@ export function useAddQueueEntryMutation(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (displayName: string) =>
-      apiPost<{ position: number }>(`/api/runs/${code}/queue`, { displayName, mode }),
+      apiPost<{ id: string; position: number }>(`/api/runs/${code}/queue`, { displayName, mode }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["queue", code] });
     },

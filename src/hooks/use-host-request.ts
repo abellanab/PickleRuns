@@ -22,7 +22,8 @@ export function useHostStatus() {
 export function useRequestHostMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => apiPost<{ status: HostStatus }>("/api/host-requests"),
+    mutationFn: ({ displayName }: { displayName: string }) =>
+      apiPost<{ status: HostStatus }>("/api/host-requests", { displayName }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["host-status"] });
     },

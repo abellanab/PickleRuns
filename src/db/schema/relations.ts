@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { users } from "./users";
 import { hostRequests } from "./host-requests";
 import { runs } from "./runs";
+import { courts } from "./courts";
 import { queueEntries } from "./queue-entries";
 import { games } from "./games";
 import { gamePlayers } from "./game-players";
@@ -20,6 +21,12 @@ export const hostRequestsRelations = relations(hostRequests, ({ one }) => ({
 export const runsRelations = relations(runs, ({ one, many }) => ({
   host: one(users, { fields: [runs.hostId], references: [users.id] }),
   queueEntries: many(queueEntries),
+  courts: many(courts),
+  games: many(games),
+}));
+
+export const courtsRelations = relations(courts, ({ one, many }) => ({
+  run: one(runs, { fields: [courts.runId], references: [runs.id] }),
   games: many(games),
 }));
 
@@ -32,6 +39,7 @@ export const queueEntriesRelations = relations(queueEntries, ({ one, many }) => 
 
 export const gamesRelations = relations(games, ({ one, many }) => ({
   run: one(runs, { fields: [games.runId], references: [runs.id] }),
+  court: one(courts, { fields: [games.courtId], references: [courts.id] }),
   gamePlayers: many(gamePlayers),
   scoreEvents: many(scoreEvents),
 }));

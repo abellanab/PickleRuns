@@ -33,7 +33,9 @@ export async function GET(request: Request) {
       // trigger-created, so the FK is satisfiable. Log-only, must not block redirect.
       if (user?.user_metadata?.hostIntent) {
         try {
-          await ensureHostRequest(user.id);
+          const metaName = ((user.user_metadata?.displayName as string | undefined) ?? "").trim();
+          const hostName = (metaName || (user.email ?? "").split("@")[0] || "Host").slice(0, 50);
+          await ensureHostRequest(user.id, hostName);
         } catch (err) {
           console.error("Host request auto-create failed", err);
         }

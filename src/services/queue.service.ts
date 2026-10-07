@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { queueEntries, games, gamePlayers } from "@/db/schema";
+import { queueEntries, games, gamePlayers, courts } from "@/db/schema";
 import { eq, and, ne, sql, inArray, asc } from "drizzle-orm";
 import type { QueueEntry } from "@/types/db";
 
@@ -33,31 +33,36 @@ export async function joinQueue(
 // games_played is not a column — it is derived per request from the count of
 // completed games each entry was rostered in (see below). Callers/UI read it
 // off this shape, not off the row.
-export type QueueEntryWithGames = QueueEntry & { gamesPlayed: number };
+export type QueueEntryWithGames = QueueEntry & {
+  gamesPlayed: number;
+  courtNumber: number | null;
+};
 
 export async function getQueueForRun(
   runId: string,
 ): Promise<{ onCourt: QueueEntryWithGames[]; waiting: QueueEntryWithGames[] }> {
-  const [allEntries, activeGame] = await Promise.all([
+  const [allEntries, rostered] = await Promise.all([
     db
       .select()
       .from(queueEntries)
       .where(and(eq(queueEntries.runId, runId), ne(queueEntries.status, "removed")))
       .orderBy(asc(queueEntries.position)),
     db
-      .select({ id: games.id })
-      .from(games)
-      .where(and(eq(games.runId, runId), eq(games.status, "active")))
-      .limit(1),
+      .select({
+        queueEntryId: gamePlayers.queueEntryId,
+        courtNumber: courts.number,
+      })
+      .from(gamePlayers)
+      .innerJoin(games, eq(games.id, gamePlayers.gameId))
+      .leftJoin(courts, eq(courts.id, games.courtId))
+      .where(and(eq(games.runId, runId), inArray(games.status, ["pending", "active"]))),
   ]);
 
-  let onCourtIds = new Set<string>();
-  if (activeGame.length > 0) {
-    const players = await db
-      .select({ queueEntryId: gamePlayers.queueEntryId })
-      .from(gamePlayers)
-      .where(eq(gamePlayers.gameId, activeGame[0].id));
-    onCourtIds = new Set(players.map((p) => p.queueEntryId));
+  const courtByEntryId = new Map<string, number | null>();
+  for (const row of rostered) {
+    if (!courtByEntryId.has(row.queueEntryId)) {
+      courtByEntryId.set(row.queueEntryId, row.courtNumber ?? null);
+    }
   }
 
   // Compute games played from completed games — the single source of truth for
@@ -88,10 +93,11 @@ export async function getQueueForRun(
   const entries: QueueEntryWithGames[] = allEntries.map((entry) => ({
     ...entry,
     gamesPlayed: gamesPlayedMap.get(entry.id) ?? 0,
+    courtNumber: courtByEntryId.get(entry.id) ?? null,
   }));
 
-  const onCourt = entries.filter((e) => onCourtIds.has(e.id));
-  const waiting = entries.filter((e) => !onCourtIds.has(e.id));
+  const onCourt = entries.filter((e) => courtByEntryId.has(e.id));
+  const waiting = entries.filter((e) => !courtByEntryId.has(e.id));
 
   return { onCourt, waiting };
 }

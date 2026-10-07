@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getRunByCode } from "@/services/run.service";
+import { getRunByCode, assertRunModeAllows } from "@/services/run.service";
 import { recordScore, undoLastScore } from "@/services/game.service";
 import { scorePointSchema } from "@/validators";
 import { createClient } from "@/lib/supabase/server";
@@ -25,18 +25,10 @@ export async function POST(
   const result = scorePointSchema.safeParse(await req.json());
   if (!result.success) return apiError("VALIDATION", "Invalid request payload", 400, result.error.flatten());
 
-  const allowedPoints = run.pointSystem === "one_two" ? [1, 2] : [2, 3];
-
   try {
-    const event = await recordScore(
-      gameId,
-      run.id,
-      result.data.queueEntryId,
-      result.data.team,
-      result.data.points,
-      allowedPoints,
-    );
-    return apiSuccess(event, 201);
+    assertRunModeAllows(run, "score");
+    const { event, game } = await recordScore(gameId, run.id, result.data.queueEntryId);
+    return apiSuccess({ event, game }, 201);
   } catch (err) {
     return handleApiError(err);
   }
@@ -60,9 +52,10 @@ export async function PATCH(
   if (run.hostId !== userId) return apiError("FORBIDDEN", "Forbidden", 403);
 
   try {
-    const event = await undoLastScore(gameId, run.id);
-    if (!event) return apiError("NO_SCORE_TO_UNDO", "No score to undo", 422);
-    return apiSuccess(event);
+    assertRunModeAllows(run, "score");
+    const result = await undoLastScore(gameId, run.id);
+    if (!result) return apiError("NO_SCORE_TO_UNDO", "No score to undo", 422);
+    return apiSuccess(result);
   } catch (err) {
     return handleApiError(err);
   }

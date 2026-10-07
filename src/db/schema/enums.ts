@@ -1,14 +1,14 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 
-export const runPointSystem = pgEnum("run_point_system", ["one_two", "two_three"]);
-
-export const runFormat = pgEnum("run_format", [
-  "winner_stays",
-  "new_ten",
-  "host_decides",
+export const runMode = pgEnum("run_mode", [
+  "score_only",
+  "queue_only",
+  "score_and_queue",
 ]);
 
-export const runStatus = pgEnum("run_status", [
+export const rotationStyle = pgEnum("rotation_style", ["winner_stays", "rotate_all"]);
+
+export const runStatus =pgEnum("run_status", [
   "lobby",
   "active",
   "completed",
@@ -22,7 +22,7 @@ export const gameStatus = pgEnum("game_status", [
 
 export const gameTeam = pgEnum("game_team", ["team_a", "team_b"]);
 
-export const gameWinner = pgEnum("game_winner", ["team_a", "team_b", "tie"]);
+export const gameWinner = pgEnum("game_winner", ["team_a", "team_b"]);
 
 export const queueEntryStatus = pgEnum("queue_entry_status", [
   "waiting",

@@ -44,7 +44,7 @@ export function Topbar({
         {onBack && (
           <button
             onClick={onBack}
-            className="w-9 h-9 rounded-sm border border-border bg-bg-surface text-text-secondary flex items-center justify-center cursor-pointer transition-all duration-150 hover:border-accent-dim hover:text-accent hover:bg-accent-glow"
+            className="w-11 h-11 rounded-sm border border-border bg-bg-surface text-text-secondary flex items-center justify-center cursor-pointer transition-all duration-150 hover:border-accent-dim hover:text-accent hover:bg-accent-glow"
           >
             <svg
               viewBox="0 0 24 24"

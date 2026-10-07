@@ -2,16 +2,9 @@
 
 import { useParams } from "next/navigation";
 import { SessionTopbar } from "@/components/ui/session-topbar";
-import { GameBreakdown } from "@/components/ui/game-breakdown";
-import { formatTime, winnerLabel } from "@/lib/utils";
+import { GameBreakdown, winnerText } from "@/components/ui/game-breakdown";
 import { useGameDetails } from "@/hooks/use-game";
 import { useRun } from "@/hooks/use-run";
-
-function gameDuration(startedAt: string | null, endedAt: string | null): string {
-  if (!startedAt || !endedAt) return "—";
-  const ms = new Date(endedAt).getTime() - new Date(startedAt).getTime();
-  return formatTime(Math.round(ms / 1000));
-}
 
 export default function PastGamePage() {
   const { code, gameId } = useParams<{ code: string; gameId: string }>();
@@ -28,12 +21,7 @@ export default function PastGamePage() {
   // (points DESC, displayName ASC), so the top scorer is always index 0.
   const players = details?.players ?? [];
   const winner = game?.winner ?? null;
-  const winnerTextClass =
-    winner === "tie"
-      ? "text-warning"
-      : winner !== null
-        ? "text-accent"
-        : "text-text-muted";
+  const winnerTextClass = winner !== null ? "text-accent" : "text-text-muted";
   const totalPoints = game ? game.scoreA + game.scoreB : 0;
   const topScorer = players[0] ?? null;
 
@@ -63,7 +51,7 @@ export default function PastGamePage() {
               <span
                 className={`font-display text-[22px] font-black tracking-[0.02em] uppercase leading-none ${winnerTextClass}`}
               >
-                {winnerLabel(winner)}
+                {winnerText(winner)}
               </span>
             </div>
 
@@ -75,7 +63,7 @@ export default function PastGamePage() {
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 px-4 py-5">
                 <div className="flex flex-col items-center gap-0.5">
                   <span className="font-display text-[11px] font-bold tracking-[0.14em] uppercase text-text-muted">
-                    Runs
+                    Side A
                   </span>
                   <span
                     className="font-display font-black leading-[0.88] tracking-[-0.02em] text-text-primary select-none"
@@ -89,7 +77,7 @@ export default function PastGamePage() {
                 </span>
                 <div className="flex flex-col items-center gap-0.5">
                   <span className="font-display text-[11px] font-bold tracking-[0.14em] uppercase text-text-muted">
-                    Next
+                    Side B
                   </span>
                   <span
                     className="font-display font-black leading-[0.88] tracking-[-0.02em] text-text-primary select-none"
@@ -106,16 +94,6 @@ export default function PastGamePage() {
                 <span className="font-display text-[11px] font-semibold tracking-[0.08em] uppercase text-text-muted">
                   · to {game!.scoreGoal}
                 </span>
-                {game!.timeLimitSeconds !== null && game!.startedAt && game!.endedAt && (
-                  <>
-                    <span className="font-display text-[11px] font-semibold tracking-[0.08em] uppercase text-text-muted">
-                      ·
-                    </span>
-                    <span className="font-display text-[11px] font-semibold tracking-[0.08em] uppercase text-text-muted">
-                      {gameDuration(game!.startedAt, game!.endedAt)}
-                    </span>
-                  </>
-                )}
               </div>
             </div>
 

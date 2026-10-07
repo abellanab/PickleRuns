@@ -37,7 +37,7 @@ function SignupChrome({ children }: { children: React.ReactNode }) {
           href="/"
           className="font-display text-[28px] font-black tracking-[-0.01em] uppercase text-text-primary leading-none transition-opacity hover:opacity-70"
         >
-          BALLRUNS
+          PICKLERUNS
         </Link>
         <div className="w-12 h-0.5 bg-accent rounded-sm mt-2" />
       </div>

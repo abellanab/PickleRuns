@@ -8,8 +8,7 @@ export const joinRunSchema = z.object({
 export type JoinRunInput = z.infer<typeof joinRunSchema>;
 
 // PATCH schema for a queue entry — either a status change (reinstate / mark out
-// / remove) or a paid toggle (host marking the court fee collected). Benching is
-// handled entirely in the team-assignment draft state and never hits this endpoint.
+// / remove) or a paid toggle (host marking the court fee collected).
 // .strict() on each member is load-bearing: the route discriminates on
 // `"status" in data`, so a mixed `{ status, paid }` payload must be rejected (400)
 // rather than silently matching the first member and dropping the other key.

@@ -60,6 +60,27 @@ export function JoinPageClient({ runCode, currentUser }: Props) {
     );
   }
 
+  if (run.runMode === "score_only") {
+    return (
+      <div className="app-shell px-5">
+        <div className="pt-10 flex flex-col items-center justify-center text-center gap-3">
+          <span className="font-display text-[16px] font-black tracking-[0.06em] uppercase text-text-primary">
+            This run has no queue
+          </span>
+          <span className="font-body text-[13px] text-text-muted">
+            Ask the host to add you.
+          </span>
+          <Link
+            href="/"
+            className="mt-4 min-h-[44px] inline-flex items-center font-display text-[13px] font-bold tracking-[0.08em] uppercase text-accent underline underline-offset-2"
+          >
+            Back to home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return <JoinForm runCode={runCode} runName={run.name} currentUser={currentUser} />;
 }
 
@@ -87,6 +108,11 @@ export default function JoinForm({ runCode, runName, currentUser }: JoinFormProp
 
     try {
       const data = await addEntry.mutateAsync(trimmed);
+      try {
+        localStorage.setItem(`pickleruns:entry:${runCode}`, data.id);
+      } catch {
+        // Storage can be blocked; the player status banner simply won't show.
+      }
       setJoined({ displayName: trimmed, position: data.position });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");

@@ -1,14 +1,15 @@
 import { z } from "zod";
 
 export const createGameSchema = z.object({
-  teamA: z.array(z.string().uuid()).min(1),
-  teamB: z.array(z.string().uuid()).min(1),
+  courtId: z.string().uuid(),
+  sideA: z.array(z.string().uuid()).min(1).max(2),
+  sideB: z.array(z.string().uuid()).min(1).max(2),
 });
 
 export type CreateGameInput = z.infer<typeof createGameSchema>;
 
-export const clockActionSchema = z.object({
-  action: z.enum(["start", "pause", "resume"]),
+export const endGameSchema = z.object({
+  winner: z.enum(["team_a", "team_b"]).optional(),
 });
 
-export type ClockActionInput = z.infer<typeof clockActionSchema>;
+export type EndGameInput = z.infer<typeof endGameSchema>;

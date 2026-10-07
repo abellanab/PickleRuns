@@ -3,6 +3,7 @@ export * from "./users";
 export * from "./host-requests";
 export * from "./invites";
 export * from "./runs";
+export * from "./courts";
 export * from "./queue-entries";
 export * from "./games";
 export * from "./game-players";

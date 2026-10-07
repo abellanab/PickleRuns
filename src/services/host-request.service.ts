@@ -39,6 +39,7 @@ export async function getHostStatus(userId: string): Promise<HostStatus> {
 
 export async function createHostRequest(
   userId: string,
+  displayName: string,
 ): Promise<{ status: HostStatus }> {
   const existing = await db
     .select({ status: hostRequests.status })
@@ -55,7 +56,7 @@ export async function createHostRequest(
   // The partial unique index uq_host_requests_one_pending is the race backstop.
   const [created] = await db
     .insert(hostRequests)
-    .values({ userId, status: "pending" })
+    .values({ userId, displayName, status: "pending" })
     .returning({ status: hostRequests.status });
 
   return { status: created.status };
@@ -64,7 +65,10 @@ export async function createHostRequest(
 // Idempotent auto-create for the sign-up-with-host-intent path. Called from the
 // auth callback, so it must be safe to run more than once and never throw on
 // "already requested" — same discipline as welcomeUserOnce.
-export async function ensureHostRequest(userId: string): Promise<void> {
+export async function ensureHostRequest(
+  userId: string,
+  displayName: string,
+): Promise<void> {
   const existing = await db
     .select({ status: hostRequests.status })
     .from(hostRequests)
@@ -74,5 +78,5 @@ export async function ensureHostRequest(userId: string): Promise<void> {
     return;
   }
 
-  await db.insert(hostRequests).values({ userId, status: "pending" });
+  await db.insert(hostRequests).values({ userId, displayName, status: "pending" });
 }

@@ -3,15 +3,27 @@ import { ZodError } from "zod";
 import type { ApiResponse } from "@/types/api";
 import {
   InvalidEntryIdsError,
-  OngoingGameError,
+  PlayerUnavailableError,
+  InvalidRosterError,
+  WinnerRequiredError,
   RunCompletedError,
   GameNotFoundError,
   GameCompletedError,
   PlayerNotInGameError,
   DuplicateScoreError,
-  InvalidPointsError,
 } from "@/services/game.service";
-import { RunNotFoundError } from "@/services/run.service";
+import {
+  CourtNotFoundError,
+  CourtOccupiedError,
+  LastCourtError,
+  CourtLimitError,
+  CourtHasHistoryError,
+} from "@/services/court.service";
+import {
+  RunNotFoundError,
+  HostAlreadyHasActiveRunError,
+  RunModeNotSupportedError,
+} from "@/services/run.service";
 import {
   InviteNotFoundError,
   InviteUsedError,
@@ -51,23 +63,47 @@ export function handleApiError(err: unknown): NextResponse<ApiResponse<never>> {
   if (err instanceof RunNotFoundError) {
     return apiError("NOT_FOUND", err.message, 404);
   }
+  if (err instanceof HostAlreadyHasActiveRunError) {
+    return apiError("HOST_HAS_ACTIVE_RUN", err.message, 409);
+  }
+  if (err instanceof RunModeNotSupportedError) {
+    return apiError("MODE_NOT_SUPPORTED", err.message, 409);
+  }
   if (err instanceof GameCompletedError) {
     return apiError("GAME_COMPLETED", err.message, 409);
   }
   if (err instanceof PlayerNotInGameError) {
     return apiError("PLAYER_NOT_IN_GAME", err.message, 422);
   }
-  if (err instanceof OngoingGameError) {
-    return apiError("ONGOING_GAME", err.message, 409);
+  if (err instanceof CourtNotFoundError) {
+    return apiError("COURT_NOT_FOUND", err.message, 404);
+  }
+  if (err instanceof CourtOccupiedError) {
+    return apiError("COURT_OCCUPIED", err.message, 409);
+  }
+  if (err instanceof PlayerUnavailableError) {
+    return apiError("PLAYER_UNAVAILABLE", err.message, 409);
+  }
+  if (err instanceof InvalidRosterError) {
+    return apiError("INVALID_ROSTER", err.message, 422);
+  }
+  if (err instanceof WinnerRequiredError) {
+    return apiError("WINNER_REQUIRED", err.message, 422);
+  }
+  if (err instanceof LastCourtError) {
+    return apiError("LAST_COURT", err.message, 409);
+  }
+  if (err instanceof CourtLimitError) {
+    return apiError("COURT_LIMIT", err.message, 409);
+  }
+  if (err instanceof CourtHasHistoryError) {
+    return apiError("COURT_HAS_HISTORY", err.message, 409);
   }
   if (err instanceof RunCompletedError) {
     return apiError("RUN_COMPLETED", err.message, 409);
   }
   if (err instanceof DuplicateScoreError) {
     return apiError("DUPLICATE_SCORE", err.message, 409);
-  }
-  if (err instanceof InvalidPointsError) {
-    return apiError("INVALID_POINTS", err.message, 400);
   }
   if (err instanceof InviteNotFoundError) {
     return apiError("INVITE_NOT_FOUND", err.message, 404);

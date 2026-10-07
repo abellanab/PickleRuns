@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { runs, games, queueEntries, scoreEvents, gamePlayers } from "@/db/schema";
+import { runs, courts, games, queueEntries, scoreEvents, gamePlayers } from "@/db/schema";
 import { eq, count, desc, inArray, and, or, sql, isNull } from "drizzle-orm";
 import type { CreateRunInput } from "@/validators";
 import type { Run } from "@/types/db";
@@ -11,6 +11,50 @@ export class RunNotFoundError extends Error {
     super("Run not found");
     this.name = "RunNotFoundError";
   }
+}
+
+export class HostAlreadyHasActiveRunError extends Error {
+  constructor() {
+    super("You already have an active run");
+    this.name = "HostAlreadyHasActiveRunError";
+  }
+}
+
+export class RunModeNotSupportedError extends Error {
+  constructor() {
+    super("This run does not support that action");
+    this.name = "RunModeNotSupportedError";
+  }
+}
+
+export function assertRunModeAllows(
+  run: Pick<Run, "runMode">,
+  feature: "queue" | "score",
+): void {
+  if (feature === "queue" && run.runMode === "score_only") {
+    throw new RunModeNotSupportedError();
+  }
+  if (feature === "score" && run.runMode === "queue_only") {
+    throw new RunModeNotSupportedError();
+  }
+}
+
+const ONE_OPEN_RUN_CONSTRAINT = "uq_runs_one_open_per_host";
+
+export function isUniqueViolationOn(err: unknown, constraint: string): boolean {
+  let current: unknown = err;
+  for (let depth = 0; depth < 3 && typeof current === "object" && current !== null; depth++) {
+    const e = current as { code?: unknown; constraint_name?: unknown; message?: unknown; cause?: unknown };
+    if (
+      e.code === "23505" &&
+      (e.constraint_name === constraint ||
+        (typeof e.message === "string" && e.message.includes(constraint)))
+    ) {
+      return true;
+    }
+    current = e.cause;
+  }
+  return false;
 }
 
 export async function getRunByCode(code: string) {
@@ -41,6 +85,8 @@ export async function getRunsForUser(userId: string) {
       name: runs.name,
       location: runs.location,
       status: runs.status,
+      runMode: runs.runMode,
+      courtCount: runs.courtCount,
       sessionCode: runs.sessionCode,
       createdAt: runs.createdAt,
       gameCount: count(games.id),
@@ -64,12 +110,24 @@ export async function getActiveRunByHostId(hostId: string): Promise<Run | null> 
 export async function createRun(
   input: CreateRunInput & { hostId: string }
 ): Promise<Run> {
-  const { hostId, name, location, format, sessionCode, scoreGoal, pointSystem, timeLimitSeconds } = input;
-  const [run] = await db
-    .insert(runs)
-    .values({ hostId, name, location, format, sessionCode, scoreGoal, pointSystem, timeLimitSeconds })
-    .returning();
-  return run;
+  const { hostId, name, location, runMode, rotationStyle, courtCount, scoreGoal, winByTwo, sessionCode } = input;
+  try {
+    return await db.transaction(async (tx) => {
+      const [run] = await tx
+        .insert(runs)
+        .values({ hostId, name, location, runMode, rotationStyle, courtCount, scoreGoal, winByTwo, sessionCode })
+        .returning();
+      await tx.insert(courts).values(
+        Array.from({ length: courtCount }, (_, i) => ({ runId: run.id, number: i + 1 }))
+      );
+      return run;
+    });
+  } catch (err) {
+    if (isUniqueViolationOn(err, ONE_OPEN_RUN_CONSTRAINT)) {
+      throw new HostAlreadyHasActiveRunError();
+    }
+    throw err;
+  }
 }
 
 export async function closeRun(runId: string): Promise<Run> {

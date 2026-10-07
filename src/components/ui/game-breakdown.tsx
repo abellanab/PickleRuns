@@ -4,8 +4,14 @@ type GameBreakdownProps = {
   players: PlayerData[];
   scoreA: number;
   scoreB: number;
-  winner: "team_a" | "team_b" | "tie" | null;
+  winner: "team_a" | "team_b" | null;
 };
+
+export function winnerText(winner: "team_a" | "team_b" | null): string {
+  if (winner === "team_a") return "Side A won";
+  if (winner === "team_b") return "Side B won";
+  return "—";
+}
 
 export function GameBreakdown({ players, scoreA, scoreB, winner }: GameBreakdownProps) {
   const teamA = players
@@ -28,7 +34,7 @@ export function GameBreakdown({ players, scoreA, scoreB, winner }: GameBreakdown
 
         <div className="flex flex-col gap-[5px]">
           <div className={`flex items-center justify-between pb-1.5 mb-0.5 border-b font-display text-[11px] font-extrabold tracking-[0.14em] uppercase ${isTeamAWinner ? "text-accent-dim border-border-accent" : "text-text-muted border-border"}`}>
-            Runs
+            Side A
             <span className={`text-[13px] font-black ${isTeamAWinner ? "text-accent" : "text-text-muted"}`}>
               {scoreA}
             </span>
@@ -50,7 +56,7 @@ export function GameBreakdown({ players, scoreA, scoreB, winner }: GameBreakdown
 
         <div className="flex flex-col gap-[5px]">
           <div className={`flex items-center justify-between pb-1.5 mb-0.5 border-b font-display text-[11px] font-extrabold tracking-[0.14em] uppercase ${isTeamBWinner ? "text-accent-dim border-border-accent" : "text-text-muted border-border"}`}>
-            Next
+            Side B
             <span className={`text-[13px] font-black ${isTeamBWinner ? "text-accent" : "text-text-muted"}`}>
               {scoreB}
             </span>

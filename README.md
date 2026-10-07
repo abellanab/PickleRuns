@@ -1,50 +1,52 @@
-# BallRuns
+# PickleRuns
 
-BallRuns is the sideline tool for running pickup basketball. Hosts manage queues, run games, and track scores in real time — while players just show up and play.
+PickleRuns is the sideline tool for running pickleball doubles open play. Hosts manage courts, a paddle-stacking queue, and live scores — while players just show up and play.
 
-## What is BallRuns?
+## What is PickleRuns?
 
-BallRuns keeps the chaos out of pickup basketball. Hosts create a run and share a 6-character code. Players scan in, join the queue, and wait their turn. The host assigns teams, scores points, and runs the clock — all from their phone. Everyone sees the same live state without refreshing.
+PickleRuns keeps the chaos out of open pickleball play. Hosts create a run and share a 6-character code. Players scan in, join the queue, and wait their turn. The host fills each court with the next four players and scores the game with one tap per point — all from their phone. Everyone sees the same live state without refreshing.
 
 ## Core Principles
 
-**Host-first design.** The host is managing a game on a court, not sitting at a desk. Every action should be fast and obvious.
+**Host-first design.** The host is running courts at a facility, not sitting at a desk. Every action should be fast and obvious.
 
-**Real-time by default.** Queue changes and score updates push to all connected clients instantly. Nobody should be looking at stale state.
+**Real-time by default.** Court, queue, and score changes push to all connected clients instantly. Nobody should be looking at stale state.
 
 **Zero friction for players.** Players join with a name and a code — no account, no download, no friction.
 
-**Scores are events, not edits.** Every point is logged as a `score_events` row. Undo doesn't delete — it voids. The record stays intact and a trigger keeps `games.score_a` / `score_b` in sync.
+**Scores are events, not edits.** Every point is logged as a `score_events` row (one tap = one point). Undo doesn't delete — it voids. The record stays intact and a trigger keeps `games.score_a` / `score_b` in sync.
 
-**Queue order is explicit.** Order is an integer `position` column maintained by a database trigger on game completion. The host never sorts by timestamp.
+**Queue order is explicit and trigger-owned.** Order is an integer `position` column rewritten by a database trigger on game completion. The host never sorts by timestamp and the app never rotates the queue.
 
-## Who Should Use BallRuns
+**The host scores by tap.** Rally scoring: each tap is exactly one point for the tapped player's side, and the game ends automatically at the goal.
 
-**Run organizers.** People who host recurring pickup sessions and want structure without spreadsheets.
+## Who Should Use PickleRuns
 
-**Gym and court managers.** Anyone managing a rotating queue of teams across multiple games.
+**Run organizers.** People who host recurring open-play sessions and want structure without spreadsheets.
 
-**Casual groups.** Friend groups who want a fair, visible queue instead of "who called next?"
+**Club and facility managers.** Anyone managing a rotating queue of players across several courts.
+
+**Casual groups.** Friend groups who want a fair, visible paddle stack instead of "who called next?"
 
 ## Key Features
 
 **Session codes.** Share a 6-character `session_code` (shown as `ABC-DEF`) to bring players into your run — no accounts needed on their end.
 
-**Live queue management.** Add players, reorder the queue, mark players out, or pull them back — with changes reflected instantly for everyone via Supabase Realtime.
+**Multiple courts.** A run has 1–8 courts. Each court holds at most one game at a time, and the host can add or remove idle courts during the run.
 
-**Team assignment.** Pick who plays before each game starts. Drag from the queue directly into Team A or Team B.
+**Run modes.** `score_only` (no queue; the host sets matches per court and scores), `queue_only` (paddle-stack queue and court rotation, no points; the host ends each match and picks the winner when needed), or `score_and_queue`.
 
-**Live scoreboard.** Log points by team. Undo any point without losing the audit trail — `score_events` is voided, not deleted.
+**Paddle-stacking queue.** One ordered queue per run. Add players, mark them out, reinstate, or remove them, with changes reflected instantly for everyone via Supabase Realtime. A court is filled from the front of the queue, and pairs that just played stay partners.
 
-**Game clock.** Optional countdown timer with pause and resume. Paused time is tracked separately so the clock stays accurate.
+**Rotation styles.** `rotate_all` sends all four players to the back with winners ahead of losers; `winner_stays` sends only the losing side to the back. The database trigger does the rotation on game completion.
 
-**Run formats.** Supports Winner Stays, New Ten, and Host Decides formats. The DB trigger rotates the queue according to the run's format on game completion.
+**Live scoreboard.** Tap to score one point at a time, with undo that voids the point without losing the audit trail. Games end automatically at the score goal (11 or 15), with an optional win-by-two. There is no clock or time limit.
 
-**Run settings.** Score goal, point system (1s-and-2s or 2s-and-3s), and an optional time limit are chosen once at run creation and applied to every game in the run.
+**Realtime.** One Supabase Realtime channel per run keeps games, courts, the queue, and the run in sync.
 
 **Court fees.** The host can mark each player paid from the payment view — tracked per queue entry, independent of their queue status.
 
-**Game history.** Every game, team lineup, and point event is stored. Past games are always viewable from the lobby.
+**Game history.** Every game, lineup, and point event is stored. Past games are always viewable from the lobby.
 
 ## Stack
 
@@ -69,7 +71,7 @@ BallRuns keeps the chaos out of pickup basketball. Hosts create a run and share 
 The layout reads **frontend in `app/`, infra in `lib/`, persistence in `db/`**. Drizzle is not under `lib/` — it has its own top-level tree. Zod schemas live in `validators/`, never inside services or routes.
 
 ```
-basketball-runs/
+pickleRUNS/
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx                        Landing
@@ -79,44 +81,51 @@ basketball-runs/
 │   │   │   └── actions.ts                  "use server" — Supabase auth SDK direct (the only exception)
 │   │   ├── (protected)/                    Auth-guarded — middleware redirects guests
 │   │   │   ├── create-run/
+│   │   │   ├── dashboard/                  Host dashboard
 │   │   │   ├── history/                    All runs for the signed-in host
 │   │   │   └── account/
 │   │   ├── runs/[code]/
 │   │   │   ├── layout.tsx                  Passthrough — no data fetch
 │   │   │   ├── join/                       Guest join flow
-│   │   │   ├── team-assignment/            Assign players to teams before tip-off
-│   │   │   ├── (host)/results/            Post-game summary — host, no bottom nav
+│   │   │   ├── courts/[courtId]/assign/    Host picks the four players for a court
+│   │   │   ├── (host)/results/            Post-run summary — host, no bottom nav
 │   │   │   └── (session)/                  Pages with bottom nav
 │   │   │       ├── layout.tsx              BottomNav wrapper
-│   │   │       ├── game/                   Live game management
+│   │   │       ├── game/                   Live game management (tap to score)
 │   │   │       ├── queue/                  Queue view
 │   │   │       ├── payment/                Court-fee confirmation (host)
-│   │   │       ├── lobby/                  Run lobby (game list)
+│   │   │       ├── lobby/                  Courts dashboard (court cards, Next up, status banner)
 │   │   │       └── lobby/[gameId]/         Single game detail
 │   │   └── api/                            All HTTP endpoints — thin: auth + Zod + delegate
 │   │       ├── auth/                        callback (PKCE) + confirm (email token-hash verify)
+│   │       ├── host-requests/              POST request host access
+│   │       ├── invites/[token]/            GET invite lookup
 │   │       ├── runs/                       POST create run · (GET list)
 │   │       │   └── [code]/                 GET run detail
 │   │       │       ├── status/
-│   │       │       ├── games/              GET list · POST create game
+│   │       │       ├── stats/
+│   │       │       ├── courts/             GET overview · POST add court
+│   │       │       │   └── [courtId]/      DELETE idle court
+│   │       │       │       └── fill-proposal/  GET proposed four players
+│   │       │       ├── games/              GET list · POST create (assign) game
 │   │       │       │   └── [gameId]/       GET detail · PATCH end game
-│   │       │       │       ├── clock/
-│   │       │       │       └── score/
+│   │       │       │       └── score/      POST point · PATCH undo (void)
 │   │       │       └── queue/              GET queue · POST guest join
 │   │       │           └── [entryId]/      PATCH status or paid toggle
 │   │       └── users/
 │   │           └── me/
 │   ├── components/                         Shared UI components
-│   ├── hooks/                              Client-side hooks — TanStack Query + Realtime (use-*.ts)
-│   ├── stores/                             Zustand stores — UI-only state ONLY (never API data)
+│   ├── hooks/                              Client-side hooks — TanStack Query + Realtime (use-*.ts), e.g. use-courts, use-run-realtime
+│   ├── stores/                             Zustand stores — UI-only state ONLY (never API data), e.g. court-assignment.store.ts
 │   ├── lib/                                Helpers + clients + infra config ONLY
 │   │   ├── api/                            HTTP envelope (client.ts · response.ts)
 │   │   ├── env.ts                          Zod-validated env vars (server only, lazy)
 │   │   ├── query/                          QueryClient setup
 │   │   ├── supabase/                       Browser, server, and middleware clients
+│   │   ├── queue-pairs.ts                  pickNextGroup — keeps recent partners together
 │   │   ├── resend/                          Resend client (lazy singleton)
 │   │   └── utils.ts                        Pure utility helpers
-│   ├── services/                           Business logic + DB access (*.service.ts)
+│   ├── services/                           Business logic + DB access (*.service.ts), incl. court.service.ts
 │   ├── emails/                             React Email templates (welcome)
 │   ├── validators/                         Zod schemas (*.validator.ts) — input source of truth
 │   └── types/
@@ -129,6 +138,7 @@ basketball-runs/
 │   │       ├── enums.ts                    pgEnum definitions
 │   │       ├── users.ts
 │   │       ├── runs.ts
+│   │       ├── courts.ts
 │   │       ├── queue-entries.ts
 │   │       ├── games.ts
 │   │       ├── game-players.ts
@@ -185,7 +195,9 @@ These invariants are enforced in the database and must be respected by applicati
 
 - **`games.score_a` and `games.score_b` are trigger-maintained.** Never write them from app code — only `score_events` inserts/voids change them.
 - **Queue ordering is the integer `position` column.** Read with `ORDER BY position ASC`. Never sort by `joined_at`.
-- **Queue rotation is trigger-maintained.** `trg_rotate_queue_on_game_complete` rewrites `queue_entries.position` on every game → `completed` transition. Never rotate the queue from app code.
+- **Queue rotation is trigger-maintained.** `trg_rotate_queue_on_game_complete` rewrites `queue_entries.position` on every game → `completed` transition per `runs.rotation_style` (`rotate_all`: all four to the back, winners ahead of losers; `winner_stays`: only the losers). It skips `score_only` runs. Never rotate the queue from app code.
+- **`games.court_id` is required.** A court has at most one `pending`/`active` game (`uq_games_court_open`), and a host has at most one open run (`uq_runs_one_open_per_host`).
+- **Scoring is rally scoring.** One `score_events` row = one point (`points = 1`); undo sets `voided_at`. `game_winner` is `team_a` | `team_b` | NULL — no tie, no clock.
 - **Never hard-delete `queue_entries` with game history.** `game_players` and `score_events` have `ON DELETE RESTRICT`. Set `status = 'removed'` instead.
 - **`users.id` mirrors `auth.users.id`.** The row is created by trigger, not by the app.
 - **`session_code` is the public identifier for a run.** URLs use `[code]`, not `[id]`.
@@ -197,7 +209,7 @@ These invariants are enforced in the database and must be respected by applicati
    npm install
    ```
 
-2. Copy `.env.example` to `.env` and fill in your Supabase credentials (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DIRECT_URL`) and your Resend credentials (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`) for transactional email
+2. Copy `.env.example` to `.env` and fill in your Supabase credentials (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DIRECT_URL`) and, only if you need transactional email, your Resend credentials (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`) — missing Resend vars no longer break DB routes
 
 3. Apply the database migrations
    ```bash
@@ -249,7 +261,7 @@ npm run db:migrate:down
 
 | Role | Account | Access |
 |---|---|---|
-| Host | Required | Full control — create run, manage queue, score, clock |
+| Host | Required | Full control — create run, manage courts and queue, score |
 | Player | Guest (optional) | Join queue, view live score |
 | Spectator | Guest | Read-only |
 
@@ -276,7 +288,9 @@ For full project rules (data flow, schema invariants, migration rules, what-not-
 
 ## References
 
+> `docs/references/*.html` are legacy basketball-era static design mockups, kept for visual reference only. They do not describe the current product.
+
 - Authoritative project rules: [CLAUDE.md](./CLAUDE.md)
 - Agent entry point: [AGENTS.md](./AGENTS.md) (defers to CLAUDE.md)
-- Product brief: `docs/ballruns-product-brief.md`
-- Schema reference: `docs/ballruns-schema.md`
+- Product brief: [`docs/ballruns-product-brief.md`](./docs/ballruns-product-brief.md)
+- Schema reference: [`docs/ballruns-schema.md`](./docs/ballruns-schema.md)

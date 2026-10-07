@@ -8,6 +8,7 @@ export const hostRequests = pgTable(
     // FK to public.users(id) is set via SQL migration, not here
     userId: uuid("user_id").notNull(),
     status: hostRequestStatus("status").notNull().default("pending"),
+    displayName: text("display_name").notNull(),
     note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
