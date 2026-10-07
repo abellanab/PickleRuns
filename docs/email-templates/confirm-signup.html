@@ -1,0 +1,132 @@
+<!--
+  PickleRuns - Supabase Auth "Confirm signup" email template
+
+  WHERE TO PASTE
+    Supabase Dashboard -> Authentication -> Email Templates -> Confirm signup
+    Paste everything from the <!DOCTYPE html> line below to the end into the
+    "Message body" field (leave this comment out; Supabase evaluates template
+    variables even inside HTML comments).
+
+  SUGGESTED SUBJECT
+    Confirm your PickleRuns account
+
+  SUPABASE VARIABLES USED
+    .SiteURL             Project Site URL (used to build the app's own confirm link)
+    .TokenHash           Hashed OTP token, verified by /api/auth/confirm
+    .Email               Recipient address
+    .Data.displayName    user_metadata.displayName set at signup (optional)
+
+  REQUIRED SUPABASE URL CONFIGURATION
+    Authentication -> URL Configuration
+      Site URL:       https://pickle-runs.vercel.app   (the production domain)
+      Redirect URLs:  https://pickle-runs.vercel.app/**
+
+  The button links to the app's own route (/api/auth/confirm), NOT .ConfirmationURL.
+-->
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>Confirm your PickleRuns email</title>
+  <!--[if mso]>
+  <xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml>
+  <![endif]-->
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap');
+    :root { color-scheme: dark; supported-color-schemes: dark; }
+    body { margin: 0; padding: 0; background-color: #0e0f0c; }
+    @media (max-width: 520px) {
+      .outer-pad { padding: 16px !important; }
+      .card-pad { padding: 24px !important; }
+      .btn-table { width: 100% !important; }
+      .btn-link { display: block !important; width: 100% !important; box-sizing: border-box !important; }
+    }
+  </style>
+</head>
+<body bgcolor="#0e0f0c" style="margin:0;padding:0;background-color:#0e0f0c;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">Confirm your email to start running pickleball courts with PickleRuns.&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0e0f0c" style="width:100%;background-color:#0e0f0c;">
+    <tr>
+      <td align="center" class="outer-pad" bgcolor="#0e0f0c" style="padding:32px 16px;background-color:#0e0f0c;">
+
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" bgcolor="#161710" style="width:100%;max-width:480px;background-color:#161710;border:1px solid #2a2c22;border-radius:16px;">
+          <tr>
+            <td class="card-pad" bgcolor="#161710" style="padding:32px;background-color:#161710;border-radius:16px;">
+
+              <!-- Brand -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td width="32" height="32" bgcolor="#c8f135" style="width:32px;height:32px;background-color:#c8f135;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td>
+                  <td style="padding-left:12px;font-family:'Barlow Condensed',Arial,Helvetica,sans-serif;font-size:30px;line-height:32px;font-weight:800;text-transform:uppercase;letter-spacing:0.02em;color:#f0f0e8;">PICKLERUNS</td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="padding-top:10px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr><td width="48" height="3" bgcolor="#c8f135" style="width:48px;height:3px;background-color:#c8f135;border-radius:2px;font-size:0;line-height:0;">&nbsp;</td></tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Greeting -->
+              <p style="margin:28px 0 8px 0;font-family:'Barlow',Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;font-weight:500;color:#f0f0e8;">{{ if .Data.displayName }}Hi <span style="color:#c8f135;font-weight:600;">{{ .Data.displayName }}</span>,{{ else }}Hi there,{{ end }}</p>
+
+              <!-- Heading -->
+              <h1 style="margin:0 0 16px 0;font-family:'Barlow Condensed',Arial,Helvetica,sans-serif;font-size:40px;line-height:44px;font-weight:900;text-transform:uppercase;letter-spacing:0.01em;color:#f0f0e8;">Confirm your <span style="color:#c8f135;">email</span></h1>
+
+              <!-- Body -->
+              <p style="margin:0 0 28px 0;font-family:'Barlow',Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;font-weight:400;color:#8a8c7a;">Confirm your address to activate your PickleRuns account and start queueing, scoring and running courts from your phone.</p>
+
+              <!-- Button -->
+              <table role="presentation" class="btn-table" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#c8f135" style="border-radius:8px;background-color:#c8f135;">
+                    <!--[if mso]>
+                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard" style="height:48px;v-text-anchor:middle;width:300px;" arcsize="17%" stroke="f" fillcolor="#c8f135">
+                      <w:anchorlock/>
+                      <center style="color:#0e0f0c;font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;">CONFIRM EMAIL</center>
+                    </v:roundrect>
+                    <![endif]-->
+                    <!--[if !mso]><!-->
+                    <a class="btn-link" href="{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard" target="_blank" style="display:inline-block;min-height:48px;line-height:48px;padding:0 36px;font-family:'Barlow Condensed',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#0e0f0c;text-decoration:none;border-radius:8px;background-color:#c8f135;text-align:center;">Confirm email</a>
+                    <!--<![endif]-->
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Fallback link -->
+              <p style="margin:0 0 6px 0;font-family:'Barlow',Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;font-weight:400;color:#8a8c7a;">Button not working? Copy and paste this link into your browser:</p>
+              <p style="margin:0 0 24px 0;font-family:'Barlow',Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;word-break:break-all;overflow-wrap:anywhere;"><a href="{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard" target="_blank" style="color:#c8f135;text-decoration:underline;word-break:break-all;overflow-wrap:anywhere;">{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard</a></p>
+
+              <!-- Note -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#1e2019" style="width:100%;background-color:#1e2019;border:1px solid #2a2c22;border-left:3px solid #c8f135;border-radius:8px;">
+                <tr>
+                  <td bgcolor="#1e2019" style="padding:14px 16px;background-color:#1e2019;font-family:'Barlow',Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;font-weight:400;color:#8a8c7a;">This link is for {{ .Email }} and expires soon. If you didn't create a PickleRuns account, you can safely ignore this email.</td>
+                </tr>
+              </table>
+
+              <!-- Divider -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr><td height="1" style="height:1px;padding-top:28px;border-bottom:1px solid #2a2c22;font-size:0;line-height:0;">&nbsp;</td></tr>
+              </table>
+
+              <!-- Sign-off -->
+              <p style="margin:24px 0 8px 0;font-family:'Barlow Condensed',Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#8a8c7a;">See you on the court.</p>
+              <p style="margin:0;font-family:'Barlow',Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;font-weight:400;color:#4a4c3e;">PickleRuns &mdash; pickleball court queue &amp; scorekeeping</p>
+
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
