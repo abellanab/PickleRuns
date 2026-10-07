@@ -71,6 +71,8 @@ export default function GamePage() {
     (!!currentGameId && detailsQuery.isPending);
 
   const isHost = !!userId && !!run && userId === run.hostId;
+  const homeHref = isHost ? `/runs/${code}/lobby` : `/runs/${code}/join`;
+  const homeLabel = isHost ? "Back to lobby" : "Back to my status";
   const game = details?.game ?? null;
   const isCompleted = game?.status === "completed";
   const canScore = isHost && !!game && !isCompleted;
@@ -111,16 +113,16 @@ export default function GamePage() {
   if (!details || !game) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
-        <SessionTopbar run={run} loading={false} backHref={`/runs/${code}/lobby`} />
+        <SessionTopbar run={run} loading={false} backHref={homeHref} />
         <div className="flex-1 flex flex-col items-center justify-center gap-5 px-5">
           <span className="font-display text-[14px] font-bold tracking-[0.1em] uppercase text-text-muted text-center">
             No active game
           </span>
           <Link
-            href={`/runs/${code}/lobby`}
+            href={homeHref}
             className="min-h-[48px] px-6 flex items-center justify-center bg-accent text-bg font-display font-black tracking-[0.1em] uppercase text-[14px] rounded-md active:scale-[0.98]"
           >
-            Back to lobby
+            {homeLabel}
           </Link>
         </div>
       </div>
@@ -143,7 +145,7 @@ export default function GamePage() {
       <SessionTopbar
         run={run}
         loading={false}
-        backHref={`/runs/${code}/lobby`}
+        backHref={homeHref}
         badge={
           <span className="font-display text-[12px] font-bold tracking-[0.1em] uppercase text-accent bg-accent-glow border border-border-accent px-2.5 py-1 rounded-[4px]">
             Game {game.gameNumber}
@@ -183,10 +185,10 @@ export default function GamePage() {
               {game.winner ? `${SIDE_LABEL[game.winner]} wins` : "Final"}
             </span>
             <Link
-              href={`/runs/${code}/lobby`}
+              href={homeHref}
               className="w-full min-h-[48px] rounded-md bg-accent text-bg font-display text-[14px] font-extrabold tracking-[0.1em] uppercase flex items-center justify-center active:scale-[0.98]"
             >
-              Back to lobby
+              {homeLabel}
             </Link>
           </div>
         )}

@@ -10,6 +10,13 @@ interface PlayerStatusBannerProps {
 const labelClass =
   "font-display text-[11px] font-bold tracking-[0.14em] uppercase text-text-muted";
 
+export function getQueueNumber(queue: QueueData, entryId: string): number | null {
+  const index = queue.waiting
+    .filter((e) => e.status === "waiting")
+    .findIndex((e) => e.id === entryId);
+  return index === -1 ? null : index + 1;
+}
+
 export function PlayerStatusBanner({ entryId, queue, courts }: PlayerStatusBannerProps) {
   if (!entryId || !queue) return null;
 
@@ -40,10 +47,8 @@ export function PlayerStatusBanner({ entryId, queue, courts }: PlayerStatusBanne
 
   if (entry.status !== "waiting") return null;
 
-  const waitingOnly = queue.waiting.filter((e) => e.status === "waiting");
-  const index = waitingOnly.findIndex((e) => e.id === entryId);
-  if (index === -1) return null;
-  const k = index + 1;
+  const k = getQueueNumber(queue, entryId);
+  if (k === null) return null;
 
   return (
     <Banner accent={k <= 4} title={`You're #${k} in the queue`}>

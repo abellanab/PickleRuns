@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { PlayerLiveView } from "@/components/ui/player-live-view";
 import { useAddQueueEntryMutation } from "@/hooks/use-queue";
 import { useRun } from "@/hooks/use-run";
 import { ApiError } from "@/lib/api/client";
@@ -21,12 +22,6 @@ const inputClass = cn(
   "placeholder:text-text-muted",
   "focus:border-border-accent focus:bg-bg-hover"
 );
-
-function ordinal(n: number) {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
 
 export function JoinPageClient({ runCode, currentUser }: Props) {
   const { data: run, isPending, isError } = useRun(runCode);
@@ -94,8 +89,28 @@ export default function JoinForm({ runCode, runName, currentUser }: JoinFormProp
 
   const [name, setName] = useState(currentUser?.displayName ?? "");
   const [error, setError] = useState("");
-  const [joined, setJoined] = useState<{ displayName: string; position: number } | null>(null);
+  const [entry, setEntry] = useState<{ id: string; displayName: string | null } | null>(null);
+  const [storageChecked, setStorageChecked] = useState(false);
   const addEntry = useAddQueueEntryMutation(runCode, "self_join");
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`pickleruns:entry:${runCode}`);
+      if (stored) setEntry({ id: stored, displayName: null });
+    } catch {
+      // Storage can be blocked; fall through to the join form.
+    }
+    setStorageChecked(true);
+  }, [runCode]);
+
+  const handleEntryGone = useCallback(() => {
+    try {
+      localStorage.removeItem(`pickleruns:entry:${runCode}`);
+    } catch {
+      // Nothing to clear if storage is blocked.
+    }
+    setEntry(null);
+  }, [runCode]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,96 +128,29 @@ export default function JoinForm({ runCode, runName, currentUser }: JoinFormProp
       } catch {
         // Storage can be blocked; the player status banner simply won't show.
       }
-      setJoined({ displayName: trimmed, position: data.position });
+      setEntry({ id: data.id, displayName: trimmed });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     }
   }
 
-  if (joined) {
-    const ahead = joined.position - 1;
-    const isFirst = joined.position === 1;
-
+  if (!storageChecked) {
     return (
       <div className="app-shell px-5">
-        {/* Top context bar */}
-        <div
-          className="pt-10 flex items-center justify-between animate-fade-up"
-          style={{ animationDelay: "0s" }}
-        >
-          <span className="font-display text-[11px] font-bold tracking-[0.16em] uppercase text-text-muted">
-            {runName}
-          </span>
-          <span className="font-display text-[11px] font-bold tracking-[0.16em] uppercase text-accent">
-            You&apos;re in
-          </span>
-        </div>
-
-        {/* Hero */}
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <span
-            className="font-display text-[11px] font-bold tracking-[0.2em] uppercase text-text-muted mb-3 animate-fade-up"
-            style={{ animationDelay: "0.06s" }}
-          >
-            Queue position
-          </span>
-
-          {/* Number with glow */}
-          <div
-            className="relative flex items-center justify-center animate-fade-up"
-            style={{ animationDelay: "0.12s" }}
-          >
-            <div className="absolute w-56 h-40 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
-            <span
-              className={cn(
-                "relative font-display font-black tracking-[-0.02em] leading-none",
-                "text-[96px]",
-                isFirst ? "text-accent" : "text-text-primary"
-              )}
-            >
-              {ordinal(joined.position)}
-            </span>
-          </div>
-
-          {/* Status line */}
-          <span
-            className={cn(
-              "font-display text-[16px] font-black tracking-[0.08em] uppercase leading-none mt-3 animate-fade-up",
-              isFirst ? "text-accent" : "text-text-secondary"
-            )}
-            style={{ animationDelay: "0.18s" }}
-          >
-            {isFirst
-              ? "Next up"
-              : `${ahead} ${ahead === 1 ? "player" : "players"} ahead`}
-          </span>
-
-          {/* Divider + name */}
-          <div
-            className="mt-10 w-full border-t border-border pt-5 flex items-center justify-center gap-2 animate-fade-up"
-            style={{ animationDelay: "0.24s" }}
-          >
-            <span className="font-display text-[11px] font-bold tracking-[0.14em] uppercase text-text-muted">
-              Playing as
-            </span>
-            <span className="font-display text-[13px] font-black tracking-[0.08em] uppercase text-text-primary">
-              {joined.displayName}
-            </span>
-          </div>
-        </div>
-
-        {/* Bottom CTA */}
-        <div
-          className="pb-12 animate-fade-up"
-          style={{ animationDelay: "0.30s" }}
-        >
-          <Link href={`/runs/${runCode}/queue`}>
-            <Button variant="primary" size="lg" className="w-full">
-              View Queue
-            </Button>
-          </Link>
-        </div>
+        <div className="pt-10 h-12 w-40 bg-bg-surface rounded-md animate-pulse" />
       </div>
+    );
+  }
+
+  if (entry) {
+    return (
+      <PlayerLiveView
+        runCode={runCode}
+        runName={runName}
+        entryId={entry.id}
+        displayName={entry.displayName}
+        onEntryGone={handleEntryGone}
+      />
     );
   }
 
