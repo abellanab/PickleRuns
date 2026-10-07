@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OpenRun — Run Feed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  /* ─── DESIGN TOKENS ─────────────────────────────────────────────── */
+  :root {
+    --bg:             #0e0f0c;
+    --bg-raised:      #161710;
+    --bg-surface:     #1e2019;
+    --bg-hover:       #252720;
+
+    --accent:         #c8f135;
+    --accent-dim:     #a0c228;
+    --accent-glow:    rgba(200, 241, 53, 0.15);
+
+    --text-primary:   #f0f0e8;
+    --text-secondary: #8a8c7a;
+    --text-muted:     #4a4c3e;
+
+    --border:         #2a2c22;
+    --border-accent:  rgba(200, 241, 53, 0.3);
+
+    --radius-sm:  6px;
+    --radius-md:  10px;
+    --radius-lg:  16px;
+
+    --font-display: 'Barlow Condensed', sans-serif;
+    --font-body:    'Barlow', sans-serif;
+  }
+
+  /* ─── RESET ─────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ─── NOISE TEXTURE ─────────────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* ─── APP SHELL ─────────────────────────────────────────────────── */
+  .app {
+    position: relative;
+    z-index: 1;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ─── TOPBAR ────────────────────────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .topbar-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .run-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .run-name {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .live-badge {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-glow);
+    border: 1px solid var(--border-accent);
+    padding: 4px 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: live-pulse 1.8s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes live-pulse {
+    0%, 100% { opacity: 1;   transform: scale(1);   }
+    50%       { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* ─── SCROLL CONTAINER ──────────────────────────────────────────── */
+  .feed {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 32px;
+  }
+
+  /* ─── PINNED LIVE CARD ──────────────────────────────────────────── */
+  /* The hero. Always at the top, always live.                         */
+  .live-card {
+    margin: 16px 20px 0;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .live-card:hover {
+    border-color: var(--accent-dim);
+  }
+
+  /* Accent top bar — signals this card is alive */
+  .live-card-bar {
+    height: 3px;
+    background: var(--accent);
+    width: 100%;
+  }
+
+  .live-card-inner {
+    padding: 14px 16px 16px;
+  }
+
+  .live-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .live-card-game {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .live-card-clock {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .live-card-clock.warning {
+    color: #ff6b35;
+    animation: pulse-warn 0.8s ease-in-out infinite;
+  }
+
+  @keyframes pulse-warn {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.5; }
+  }
+
+  /* Score row inside the live card */
+  .live-score-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .live-team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .live-team-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .live-score-num {
+    font-family: var(--font-display);
+    font-size: clamp(52px, 14vw, 72px);
+    font-weight: 900;
+    line-height: 0.88;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    user-select: none;
+    transition: color 0.2s, transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .live-score-num.scored {
+    color: var(--accent);
+    transform: scale(1.08);
+  }
+
+  .live-team-goal {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .live-sep {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--text-muted);
+    letter-spacing: -0.04em;
+    padding-bottom: 10px;
+  }
+
+  /* Progress bar inside live card */
+  .live-progress {
+    height: 3px;
+    background: var(--bg-hover);
+    border-radius: 2px;
+    display: flex;
+    gap: 2px;
+  }
+
+  .live-progress-a {
+    height: 100%;
+    border-radius: 2px 0 0 2px;
+    background: var(--accent);
+    transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .live-progress-b {
+    height: 100%;
+    border-radius: 0 2px 2px 0;
+    background: var(--text-secondary);
+    transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Last score line below progress */
+  .live-last-score {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .live-last-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .live-last-dot.a { background: var(--accent); }
+  .live-last-dot.b { background: var(--text-secondary); }
+
+  .live-last-text {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    flex: 1;
+  }
+
+  .live-tap-hint {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ─── PAST GAMES SECTION ────────────────────────────────────────── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px 10px;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .section-meta {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ─── PAST GAME CARD ────────────────────────────────────────────── */
+  .past-games {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .past-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+    position: relative;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .past-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent-glow);
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+
+  .past-card:hover {
+    border-color: var(--border-accent);
+  }
+  .past-card:hover::before { opacity: 1; }
+  .past-card:active { transform: scale(0.99); }
+
+  /* Main stacked block — eyebrow + winner + detail */
+  .past-card-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+  }
+
+  /* Eyebrow — game number sits above the winner */
+  .past-card-num {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    line-height: 1;
+  }
+
+  .past-card-winner {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .past-card-detail {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* Right: final score */
+  .past-card-score {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Chevron */
+  .past-card-chevron {
+    color: var(--text-muted);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    transition: color 0.12s;
+  }
+  .past-card:hover .past-card-chevron { color: var(--text-secondary); }
+  .past-card-chevron svg { width: 14px; height: 14px; }
+
+  /* ─── EMPTY PAST GAMES ──────────────────────────────────────────── */
+  .empty-past {
+    margin: 8px 20px 0;
+    padding: 24px 20px;
+    background: var(--bg-surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .empty-past-text {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .empty-past-sub {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* ─── PAGE LOAD ANIMATIONS ──────────────────────────────────────── */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .topbar      { animation: fade-up 0.3s 0.00s ease-out both; }
+  .live-card   { animation: fade-up 0.3s 0.06s ease-out both; }
+  .section-header { animation: fade-up 0.3s 0.12s ease-out both; }
+  .past-games  { animation: fade-up 0.3s 0.16s ease-out both; }
+
+  /* ─── BOTTOM NAV ────────────────────────────────────────────────── */
+  .bottom-nav {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    background: var(--bg-raised);
+    padding: 0 8px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: 58px;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 8px 0;
+    cursor: pointer;
+    border: none;
+    background: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.12s;
+  }
+
+  .nav-item svg { width: 20px; height: 20px; }
+
+  .nav-label {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .nav-item.active { color: var(--accent); }
+  .nav-item.inactive { color: var(--text-muted); }
+  .nav-item.inactive:hover { color: var(--text-secondary); }
+
+  /* ─── HOST MANAGE BUTTON — inside live card ─────────────────────── */
+  .manage-btn {
+    width: 100%;
+    height: 40px;
+    margin-top: 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.12s, border-color 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .manage-btn:hover { background: rgba(200, 241, 53, 0.22); }
+  .manage-btn:active { transform: scale(0.98); }
+  .manage-btn svg { width: 14px; height: 14px; }
+
+  /* ─── SHARE BUTTON — topbar ─────────────────────────────────────── */
+  .share-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.12s, color 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .share-btn:hover { border-color: var(--text-muted); color: var(--text-primary); }
+  .share-btn svg { width: 16px; height: 16px; }
+
+  /* ─── ROLE TOGGLE — prototype only ──────────────────────────────── */
+  .role-toggle {
+    display: flex;
+    gap: 6px;
+    padding: 10px 20px 0;
+    flex-shrink: 0;
+  }
+
+  .role-btn {
+    flex: 1;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .role-btn.active {
+    border-color: var(--border-accent);
+    background: var(--accent-glow);
+    color: var(--accent-dim);
+  }
+
+  /* ─── START GAME CARD — host, no active game ────────────────────── */
+  .start-game-card {
+    margin: 16px 20px 0;
+    background: var(--bg-surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 16px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+  }
+
+  .start-game-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .start-game-sub {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .btn-start-game {
+    width: 100%;
+    height: 52px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-start-game:hover { background: #d4f545; }
+  .btn-start-game:active { transform: scale(0.98); }
+  .btn-start-game svg { width: 16px; height: 16px; }
+
+  /* ─── SCROLLBAR ─────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="run-label">Friday Run</span>
+      <span class="run-name">Rucker Park</span>
+    </div>
+    <div class="topbar-right">
+      <button class="share-btn" onclick="alert('Opens share sheet with QR + copy link')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+      </button>
+      <span class="live-badge">
+        <span class="live-dot"></span>
+        Live
+      </span>
+    </div>
+  </div>
+
+  <!-- ROLE TOGGLE — prototype only -->
+  <div class="role-toggle">
+    <button class="role-btn active" id="btn-spectator" onclick="setRole('spectator')">Spectator</button>
+    <button class="role-btn" id="btn-host" onclick="setRole('host')">Host · Live</button>
+    <button class="role-btn" id="btn-host-idle" onclick="setRole('host-idle')">Host · No game</button>
+  </div>
+
+  <!-- SCROLLABLE FEED -->
+  <div class="feed">
+
+    <!-- PINNED LIVE CARD -->
+    <div class="live-card" id="live-card" onclick="handleLiveCardClick()">
+      <div class="live-card-bar"></div>
+      <div class="live-card-inner">
+
+        <div class="live-card-header">
+          <span class="live-card-game">Game 4 · In progress</span>
+          <span class="live-card-clock" id="clock">12:47</span>
+        </div>
+
+        <div class="live-score-row">
+          <div class="live-team">
+            <span class="live-team-label">Runs</span>
+            <span class="live-score-num" id="score-a">14</span>
+            <span class="live-team-goal">to 21</span>
+          </div>
+          <span class="live-sep">—</span>
+          <div class="live-team">
+            <span class="live-team-label">Next</span>
+            <span class="live-score-num" id="score-b">11</span>
+            <span class="live-team-goal">to 21</span>
+          </div>
+        </div>
+
+        <div class="live-progress">
+          <div class="live-progress-a" id="progress-a" style="width: calc(14/21 * 47%)"></div>
+          <div class="live-progress-b" id="progress-b" style="width: calc(11/21 * 47%)"></div>
+        </div>
+
+        <div class="live-last-score">
+          <div class="live-last-dot a" id="last-dot"></div>
+          <span class="live-last-text" id="last-text">Marcus scored</span>
+          <span class="live-tap-hint" id="tap-hint">Tap to watch →</span>
+        </div>
+
+        <!-- HOST ONLY: Manage Game button -->
+        <button class="manage-btn" id="manage-btn" style="display:none;" onclick="alert('Opens game screen — host view')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+          Manage Game
+        </button>
+
+      </div>
+    </div>
+
+    <!-- HOST · NO GAME: Start Game card -->
+    <div class="start-game-card" id="start-game-card">
+      <span class="start-game-label">No game in progress</span>
+      <span class="start-game-sub">8 players in queue</span>
+      <button class="btn-start-game" onclick="alert('Opens team assignment')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Start Game
+      </button>
+    </div>
+
+    <!-- PAST GAMES SECTION -->
+    <div class="section-header" style="margin-top: 24px;">
+      <span class="section-title">Past games</span>
+      <span class="section-meta">3 played</span>
+    </div>
+
+    <div class="past-games">
+
+      <!-- Game 3 -->
+      <div class="past-card" onclick="alert('Opens past game view')">
+        <div class="past-card-main">
+          <span class="past-card-num">Game 3</span>
+          <span class="past-card-winner">Runs won</span>
+          <span class="past-card-detail">18:42</span>
+        </div>
+        <span class="past-card-score">21–17</span>
+        <div class="past-card-chevron">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Game 2 -->
+      <div class="past-card" onclick="alert('Opens past game view')">
+        <div class="past-card-main">
+          <span class="past-card-num">Game 2</span>
+          <span class="past-card-winner">Next won</span>
+          <span class="past-card-detail">21:15</span>
+        </div>
+        <span class="past-card-score">21–14</span>
+        <div class="past-card-chevron">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Game 1 -->
+      <div class="past-card" onclick="alert('Opens past game view')">
+        <div class="past-card-main">
+          <span class="past-card-num">Game 1</span>
+          <span class="past-card-winner">Runs won</span>
+          <span class="past-card-detail">No time limit</span>
+        </div>
+        <span class="past-card-score">21–19</span>
+        <div class="past-card-chevron">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /feed -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="void(0)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+      </svg>
+      <span class="nav-label">Feed</span>
+    </button>
+    <button class="nav-item inactive" onclick="alert('Opens Queue page')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+        <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+      </svg>
+      <span class="nav-label">Queue</span>
+    </button>
+  </nav>
+
+</div>
+
+<script>
+  /* ─── ROLE TOGGLE ───────────────────────────────────────────────── */
+  function setRole(role) {
+    const manageBtn = document.getElementById('manage-btn');
+    const tapHint = document.getElementById('tap-hint');
+    const liveCard = document.getElementById('live-card');
+    const startCard = document.getElementById('start-game-card');
+    const btnHost = document.getElementById('btn-host');
+    const btnHostIdle = document.getElementById('btn-host-idle');
+    const btnSpectator = document.getElementById('btn-spectator');
+
+    // Reset all toggles
+    [btnSpectator, btnHost, btnHostIdle].forEach(b => b.classList.remove('active'));
+
+    if (role === 'host') {
+      manageBtn.style.display = 'flex';
+      tapHint.style.display = 'none';
+      liveCard.style.display = 'block';
+      startCard.style.display = 'none';
+      btnHost.classList.add('active');
+    } else if (role === 'host-idle') {
+      liveCard.style.display = 'none';
+      startCard.style.display = 'flex';
+      btnHostIdle.classList.add('active');
+    } else {
+      manageBtn.style.display = 'none';
+      tapHint.style.display = '';
+      liveCard.style.display = 'block';
+      startCard.style.display = 'none';
+      btnSpectator.classList.add('active');
+    }
+  }
+
+  function handleLiveCardClick() {
+    const manageBtn = document.getElementById('manage-btn');
+    if (manageBtn.style.display === 'flex') {
+      alert('Opens game screen — host view');
+    } else {
+      alert('Opens spectator view');
+    }
+  }
+
+  /* ─── CLOCK ─────────────────────────────────────────────────────── */
+  let clockSeconds = 767;
+  const clockEl = document.getElementById('clock');
+
+  setInterval(() => {
+    clockSeconds--;
+    if (clockSeconds < 0) clockSeconds = 0;
+    const m = Math.floor(clockSeconds / 60);
+    const s = clockSeconds % 60;
+    clockEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    clockEl.classList.toggle('warning', clockSeconds <= 60);
+  }, 1000);
+
+  /* ─── SIMULATED LIVE SCORE ──────────────────────────────────────── */
+  const scores = { a: 14, b: 11 };
+  const goal = 21;
+  const names = {
+    a: ['Marcus', 'Kel', 'Tone', 'D. Webb', 'Junie'],
+    b: ['Dre', 'Ray', 'Big Ty', 'C. Mills', 'Poke'],
+  };
+
+  function liveScore() {
+    const team = Math.random() > 0.5 ? 'a' : 'b';
+    scores[team]++;
+
+    // Flash number
+    const el = document.getElementById(`score-${team}`);
+    el.textContent = scores[team];
+    el.classList.add('scored');
+    setTimeout(() => el.classList.remove('scored'), 300);
+
+    // Progress
+    const half = 47;
+    document.getElementById('progress-a').style.width =
+      `calc(${Math.min(scores.a, goal)} / ${goal} * ${half}%)`;
+    document.getElementById('progress-b').style.width =
+      `calc(${Math.min(scores.b, goal)} / ${goal} * ${half}%)`;
+
+    // Last score line
+    const name = names[team][Math.floor(Math.random() * names[team].length)];
+    document.getElementById('last-dot').className = `live-last-dot ${team}`;
+    document.getElementById('last-text').textContent = `${name} scored`;
+
+    if (scores.a < goal && scores.b < goal) {
+      setTimeout(liveScore, 7000 + Math.random() * 6000);
+    }
+  }
+
+  setTimeout(liveScore, 7000 + Math.random() * 6000);
+</script>
+</body>
+</html>

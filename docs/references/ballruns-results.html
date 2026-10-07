@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BallRuns — Game Results</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  /* ─── DESIGN TOKENS ─────────────────────────────────────────────── */
+  :root {
+    --bg:             #0e0f0c;
+    --bg-raised:      #161710;
+    --bg-surface:     #1e2019;
+    --bg-hover:       #252720;
+
+    --accent:         #c8f135;
+    --accent-dim:     #a0c228;
+    --accent-glow:    rgba(200, 241, 53, 0.15);
+
+    --text-primary:   #f0f0e8;
+    --text-secondary: #8a8c7a;
+    --text-muted:     #4a4c3e;
+
+    --border:         #2a2c22;
+    --border-accent:  rgba(200, 241, 53, 0.3);
+
+    --radius-sm:  6px;
+    --radius-md:  10px;
+    --radius-lg:  16px;
+
+    --font-display: 'Barlow Condensed', sans-serif;
+    --font-body:    'Barlow', sans-serif;
+  }
+
+  /* ─── RESET ─────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ─── NOISE TEXTURE ─────────────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* ─── APP SHELL ─────────────────────────────────────────────────── */
+  .app {
+    position: relative;
+    z-index: 1;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ─── TOPBAR ────────────────────────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .topbar-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .run-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .run-name {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .game-badge {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  /* ─── RESULT HERO ───────────────────────────────────────────────── */
+  .result-hero {
+    padding: 24px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  /* Subtle accent glow behind the winner score */
+  .result-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    height: 140px;
+    background: var(--accent-glow);
+    border-radius: 50%;
+    filter: blur(48px);
+    pointer-events: none;
+  }
+
+  .result-winner-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+    position: relative;
+  }
+
+  .result-winner-name {
+    font-family: var(--font-display);
+    font-size: 38px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    line-height: 1;
+    position: relative;
+  }
+
+  /* ─── FINAL SCORE BLOCK ─────────────────────────────────────────── */
+  .final-score {
+    margin: 0 20px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Accent left border on winner side */
+  .final-score::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    border-radius: 2px 0 0 2px;
+  }
+
+  .final-team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .final-team-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .final-score-num {
+    font-family: var(--font-display);
+    font-size: clamp(56px, 14vw, 80px);
+    font-weight: 900;
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    color: var(--text-secondary);
+  }
+
+  .final-score-num.winner {
+    color: var(--text-primary);
+  }
+
+  .final-team-label.winner {
+    color: var(--accent-dim);
+  }
+
+  .final-score-sep {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--text-muted);
+    letter-spacing: -0.04em;
+    padding-bottom: 8px;
+  }
+
+  /* ─── META ROW ──────────────────────────────────────────────────── */
+  /* Duration + game number — compact, below the score */
+  .result-meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin: 10px 20px 0;
+    flex-shrink: 0;
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+  }
+
+  .meta-label {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .meta-value {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    line-height: 1;
+  }
+
+  .meta-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+  }
+
+  /* ─── SECTION HEADER ────────────────────────────────────────────── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px 10px;
+    flex-shrink: 0;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ─── SCORELINE — per-player points ────────────────────────────── */
+  .scorelines {
+    flex: 1;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    overflow-y: auto;
+  }
+
+  .scoreline-col {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .scoreline-col-header {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .scoreline-col-header.winner-col {
+    color: var(--accent-dim);
+    border-color: var(--border-accent);
+  }
+
+  .scoreline-col-header .col-total {
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+
+  .scoreline-col-header.winner-col .col-total {
+    color: var(--accent);
+  }
+
+  /* Individual player result row */
+  .result-row {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .result-row.top-scorer {
+    border-color: var(--border-accent);
+  }
+
+  .result-player-name {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    line-height: 1;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .result-player-pts {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    color: var(--text-muted);
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .result-row.top-scorer .result-player-pts {
+    color: var(--accent);
+  }
+
+  /* Zero points — visually quiet */
+  .result-player-pts.zero {
+    color: var(--text-muted);
+    font-size: 16px;
+  }
+
+  /* ─── QUEUE PREVIEW ─────────────────────────────────────────────── */
+  /* Shows who's up next — the host needs this before tapping Start   */
+  .queue-preview {
+    margin: 0 20px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .queue-preview-label {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .queue-preview-names {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .queue-preview-count {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  /* ─── BOTTOM BAR ────────────────────────────────────────────────── */
+  .bottom-bar {
+    padding: 12px 20px 24px;
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+    flex-shrink: 0;
+  }
+
+  .btn-secondary {
+    height: 52px;
+    padding: 0 18px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .btn-secondary:hover {
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+  }
+  .btn-secondary svg { width: 14px; height: 14px; }
+
+  .btn-primary {
+    flex: 1;
+    height: 52px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary:hover {
+    background: #d4f545;
+    transform: translateY(-1px);
+  }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary svg { width: 16px; height: 16px; }
+
+  /* ─── PAGE LOAD ANIMATIONS ──────────────────────────────────────── */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .topbar        { animation: fade-up 0.3s 0.00s ease-out both; }
+  .result-hero   { animation: fade-up 0.3s 0.05s ease-out both; }
+  .final-score   { animation: fade-up 0.3s 0.10s ease-out both; }
+  .result-meta   { animation: fade-up 0.3s 0.14s ease-out both; }
+  .section-header{ animation: fade-up 0.3s 0.18s ease-out both; }
+  .scorelines    { animation: fade-up 0.3s 0.22s ease-out both; }
+  .queue-preview { animation: fade-up 0.3s 0.26s ease-out both; }
+  .bottom-bar    { animation: fade-up 0.3s 0.30s ease-out both; }
+
+  /* ─── SCROLLBAR ─────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="run-label">Friday Run</span>
+      <span class="run-name">Rucker Park</span>
+    </div>
+    <div class="topbar-right">
+      <span class="game-badge">Game 3</span>
+    </div>
+  </div>
+
+  <!-- RESULT HERO -->
+  <div class="result-hero">
+    <span class="result-winner-label">Winner</span>
+    <span class="result-winner-name">Runs</span>
+  </div>
+
+  <!-- FINAL SCORE -->
+  <div class="final-score">
+    <div class="final-team">
+      <span class="final-team-label winner">Runs</span>
+      <span class="final-score-num winner">21</span>
+    </div>
+    <span class="final-score-sep">—</span>
+    <div class="final-team">
+      <span class="final-team-label">Next</span>
+      <span class="final-score-num">17</span>
+    </div>
+  </div>
+
+  <!-- META ROW -->
+  <div class="result-meta">
+    <div class="meta-item">
+      <span class="meta-label">Duration</span>
+      <span class="meta-value">18:42</span>
+    </div>
+    <div class="meta-divider"></div>
+    <div class="meta-item">
+      <span class="meta-label">Buckets</span>
+      <span class="meta-value">38</span>
+    </div>
+    <div class="meta-divider"></div>
+    <div class="meta-item">
+      <span class="meta-label">Top scorer</span>
+      <span class="meta-value">Marcus</span>
+    </div>
+  </div>
+
+  <!-- PER-PLAYER SECTION -->
+  <div class="section-header" style="margin-top: 20px;">
+    <span class="section-title">Breakdown</span>
+  </div>
+
+  <!-- SCORELINES -->
+  <div class="scorelines">
+
+    <!-- RUNS — winner column -->
+    <div class="scoreline-col">
+      <div class="scoreline-col-header winner-col">
+        Runs
+        <span class="col-total">21</span>
+      </div>
+      <div class="result-row top-scorer">
+        <span class="result-player-name">Marcus</span>
+        <span class="result-player-pts">7</span>
+      </div>
+      <div class="result-row">
+        <span class="result-player-name">Kel</span>
+        <span class="result-player-pts">5</span>
+      </div>
+      <div class="result-row">
+        <span class="result-player-name">Tone</span>
+        <span class="result-player-pts">4</span>
+      </div>
+      <div class="result-row">
+        <span class="result-player-name">D. Webb</span>
+        <span class="result-player-pts">3</span>
+      </div>
+      <div class="result-row">
+        <span class="result-player-name">Junie</span>
+        <span class="result-player-pts">2</span>
+      </div>
+    </div>
+
+    <!-- NEXT — loser column -->
+    <div class="scoreline-col">
+      <div class="scoreline-col-header">
+        Next
+        <span class="col-total">17</span>
+      </div>
+      <div class="result-row top-scorer">
+        <span class="result-player-name">Dre</span>
+        <span class="result-player-pts">8</span>
+      </div>
+      <div class="result-row">
+        <span class="result-player-name">Ray</span>
+        <span class="result-player-pts">4</span>
+      </div>
+      <div class="result-row">
+        <span class="result-player-name">Big Ty</span>
+        <span class="result-player-pts">3</span>
+      </div>
+      <div class="result-row">
+        <span class="result-player-name">C. Mills</span>
+        <span class="result-player-pts">2</span>
+      </div>
+      <div class="result-row">
+        <span class="result-player-name">Poke</span>
+        <span class="result-player-pts zero">0</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- QUEUE PREVIEW -->
+  <div class="queue-preview" style="margin-top: 16px;">
+    <span class="queue-preview-label">Up next</span>
+    <span class="queue-preview-names">Marcus, Kel, Tone, D. Webb, Junie...</span>
+    <span class="queue-preview-count">+5</span>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    <button class="btn-secondary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      Lobby
+    </button>
+    <button class="btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+      Next Game
+    </button>
+  </div>
+
+</div>
+</body>
+</html>

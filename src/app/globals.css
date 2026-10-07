@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Backgrounds */
+    --bg:          #0e0f0c;
+    --bg-raised:   #161710;
+    --bg-surface:  #1e2019;
+    --bg-hover:    #252720;
+
+    /* Accent */
+    --accent:      #c8f135;
+    --accent-dim:  #a0c228;
+    --accent-glow: rgba(200, 241, 53, 0.15);
+
+    /* Text */
+    --text-primary:   #f0f0e8;
+    --text-secondary: #8a8c7a;
+    --text-muted:     #4a4c3e;
+
+    /* Borders */
+    --border:        #2a2c22;
+    --border-accent: rgba(200, 241, 53, 0.3);
+
+    /* Radius */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+
+    /* Typography */
+    --font-display: 'Barlow Condensed', sans-serif;
+    --font-body:    'Barlow', sans-serif;
+
+    /* Utility */
+    --warning: #ff6b35;
+    --danger:  #ff4040;
+    --success:        #4ade80;
+    --success-glow:   rgba(74, 222, 128, 0.10);
+    --success-border: rgba(74, 222, 128, 0.35);
+  }
+
+  * {
+    @apply box-border;
+    margin: 0;
+    padding: 0;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px #1e2019 inset;
+    -webkit-text-fill-color: #f0f0e8;
+    caret-color: #f0f0e8;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  html,
+  body {
+    height: 100%;
+    background-color: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture — makes the background feel physical, not flat */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+}
+
+@layer components {
+  /* App shell — mobile container, max 480px centered */
+  .app-shell {
+    position: relative;
+    z-index: 1;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* Topbar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 50;
+    animation: fade-up 0.3s 0.00s ease-out both;
+  }
+
+  /* Bottom bar */
+  .bottom-bar {
+    padding: 12px 20px 24px;
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+    flex-shrink: 0;
+    animation: fade-up 0.3s 0.10s ease-out both;
+  }
+
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slide-up {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-100%); }
+  }
+
+  .animate-marquee {
+    animation: marquee 26s linear infinite;
+  }
+
+  @keyframes float-soft {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+  }
+
+  .animate-float-soft {
+    animation: float-soft 5s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee,
+    .animate-float-soft {
+      animation: none;
+    }
+  }
+}

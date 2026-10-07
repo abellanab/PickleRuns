@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BallRuns — Create Run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  /* ─── DESIGN TOKENS ─────────────────────────────────────────────── */
+  :root {
+    --bg:             #0e0f0c;
+    --bg-raised:      #161710;
+    --bg-surface:     #1e2019;
+    --bg-hover:       #252720;
+
+    --accent:         #c8f135;
+    --accent-dim:     #a0c228;
+    --accent-glow:    rgba(200, 241, 53, 0.15);
+
+    --text-primary:   #f0f0e8;
+    --text-secondary: #8a8c7a;
+    --text-muted:     #4a4c3e;
+
+    --border:         #2a2c22;
+    --border-accent:  rgba(200, 241, 53, 0.3);
+
+    --radius-sm:  6px;
+    --radius-md:  10px;
+    --radius-lg:  16px;
+
+    --font-display: 'Barlow Condensed', sans-serif;
+    --font-body:    'Barlow', sans-serif;
+  }
+
+  /* ─── RESET ─────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ─── NOISE TEXTURE ─────────────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* ─── APP SHELL ─────────────────────────────────────────────────── */
+  .app {
+    position: relative;
+    z-index: 1;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ─── TOPBAR ────────────────────────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .topbar-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .run-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .run-name {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover {
+    border-color: var(--accent-dim);
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  /* ─── SCROLL BODY ───────────────────────────────────────────────── */
+  .form-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* ─── FIELD GROUP ───────────────────────────────────────────────── */
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ─── TEXT INPUT ────────────────────────────────────────────────── */
+  .text-input {
+    width: 100%;
+    height: 48px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0 14px;
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    caret-color: var(--accent);
+  }
+
+  .text-input::placeholder {
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .text-input:focus {
+    border-color: var(--border-accent);
+    background: var(--bg-hover);
+  }
+
+  /* ─── OPTION PILLS ──────────────────────────────────────────────── */
+  /* Used for Format and Team Size */
+  .pill-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    height: 40px;
+    padding: 0 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pill:hover {
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+  }
+
+  .pill.selected {
+    border-color: var(--border-accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+  }
+
+  .pill-check {
+    width: 14px;
+    height: 14px;
+    display: none;
+  }
+
+  .pill.selected .pill-check {
+    display: block;
+  }
+
+  /* ─── SCORE GOAL INPUT ──────────────────────────────────────────── */
+  .goal-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .goal-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.12s;
+    flex-shrink: 0;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .goal-btn:hover {
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+  }
+
+  .goal-btn:active {
+    transform: scale(0.94);
+  }
+
+  .goal-display {
+    flex: 1;
+    height: 44px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .goal-num {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    line-height: 1;
+    transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.1s;
+  }
+
+  .goal-num.bump {
+    transform: scale(1.12);
+    color: var(--accent);
+  }
+
+  .goal-unit {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding-top: 4px;
+  }
+
+  /* ─── TIME LIMIT TOGGLE ─────────────────────────────────────────── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .toggle-row:hover {
+    border-color: var(--text-muted);
+  }
+
+  .toggle-row.active {
+    border-color: var(--border-accent);
+  }
+
+  .toggle-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .toggle-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+
+  .toggle-sub {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* The toggle switch */
+  .toggle-switch {
+    width: 44px;
+    height: 26px;
+    border-radius: 13px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    position: relative;
+    transition: background 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle-switch.on {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .toggle-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s;
+  }
+
+  .toggle-switch.on .toggle-knob {
+    transform: translateX(18px);
+    background: var(--bg);
+  }
+
+  /* Time limit input — revealed when toggle is on */
+  .time-input-row {
+    display: none;
+    gap: 10px;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  .time-input-row.visible {
+    display: flex;
+  }
+
+  .time-pill {
+    flex: 1;
+    height: 40px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .time-pill:hover { border-color: var(--text-muted); color: var(--text-primary); }
+  .time-pill.selected {
+    border-color: var(--border-accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+  }
+
+  /* ─── DIVIDER ───────────────────────────────────────────────────── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0 -20px;
+  }
+
+  /* ─── BOTTOM BAR ────────────────────────────────────────────────── */
+  .bottom-bar {
+    padding: 12px 20px 24px;
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+    flex-shrink: 0;
+  }
+
+  .btn-primary {
+    flex: 1;
+    height: 52px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary:hover {
+    background: #d4f545;
+    transform: translateY(-1px);
+  }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled {
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-primary svg { width: 16px; height: 16px; }
+
+  /* ─── PAGE LOAD ANIMATIONS ──────────────────────────────────────── */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .topbar    { animation: fade-up 0.3s 0.00s ease-out both; }
+  .form-body { animation: fade-up 0.3s 0.06s ease-out both; }
+  .bottom-bar{ animation: fade-up 0.3s 0.10s ease-out both; }
+
+  /* ─── SCROLLBAR ─────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="run-label">BallRuns</span>
+      <span class="run-name">New Run</span>
+    </div>
+    <button class="icon-btn" title="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- FORM BODY -->
+  <div class="form-body">
+
+    <!-- RUN NAME -->
+    <div class="field-group">
+      <label class="field-label" for="run-name">Run name</label>
+      <input
+        class="text-input"
+        id="run-name"
+        type="text"
+        placeholder="Friday Run"
+        maxlength="32"
+        oninput="validate()"
+      />
+    </div>
+
+    <!-- LOCATION -->
+    <div class="field-group">
+      <label class="field-label" for="location">Location</label>
+      <input
+        class="text-input"
+        id="location"
+        type="text"
+        placeholder="Rucker Park"
+        maxlength="32"
+        oninput="validate()"
+      />
+    </div>
+
+    <!-- FORMAT -->
+    <div class="field-group">
+      <span class="field-label">Format</span>
+      <div class="pill-row" id="format-pills">
+        <button class="pill selected" onclick="selectPill('format', this)">
+          <svg class="pill-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Winner Stays
+        </button>
+        <button class="pill" onclick="selectPill('format', this)">
+          <svg class="pill-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Rotation
+        </button>
+      </div>
+    </div>
+
+    <!-- SCORE GOAL -->
+    <div class="field-group">
+      <span class="field-label">Score goal</span>
+      <div class="goal-row">
+        <button class="goal-btn" onclick="adjustGoal(-1)">−</button>
+        <div class="goal-display">
+          <span class="goal-num" id="goal-num">21</span>
+          <span class="goal-unit">pts</span>
+        </div>
+        <button class="goal-btn" onclick="adjustGoal(1)">+</button>
+      </div>
+    </div>
+
+    <!-- TIME LIMIT -->
+    <div class="field-group">
+      <span class="field-label">Time limit</span>
+      <div class="toggle-row" id="time-toggle" onclick="toggleTime()">
+        <div class="toggle-left">
+          <span class="toggle-title">Game clock</span>
+          <span class="toggle-sub">Set a time limit per game</span>
+        </div>
+        <div class="toggle-switch" id="time-switch">
+          <div class="toggle-knob"></div>
+        </div>
+      </div>
+      <div class="time-input-row" id="time-options">
+        <button class="time-pill" onclick="selectTime(this)">10 min</button>
+        <button class="time-pill selected" onclick="selectTime(this)">15 min</button>
+        <button class="time-pill" onclick="selectTime(this)">20 min</button>
+        <button class="time-pill" onclick="selectTime(this)">30 min</button>
+      </div>
+    </div>
+
+    <!-- BOTTOM PADDING -->
+    <div style="height: 8px; flex-shrink: 0;"></div>
+
+  </div><!-- /form-body -->
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    <button class="btn-primary" id="create-btn" disabled onclick="createRun()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Create Run
+    </button>
+  </div>
+
+</div>
+
+<script>
+  /* ─── GOAL ──────────────────────────────────────────────────────── */
+  let goal = 21;
+
+  function adjustGoal(delta) {
+    goal = Math.max(5, Math.min(50, goal + delta));
+    const el = document.getElementById('goal-num');
+    el.textContent = goal;
+    el.classList.add('bump');
+    setTimeout(() => el.classList.remove('bump'), 200);
+  }
+
+  /* ─── PILL SELECT ───────────────────────────────────────────────── */
+  function selectPill(group, btn) {
+    const parent = btn.closest('.pill-row');
+    parent.querySelectorAll('.pill').forEach(p => p.classList.remove('selected'));
+    btn.classList.add('selected');
+  }
+
+  /* ─── TIME TOGGLE ───────────────────────────────────────────────── */
+  let timeOn = false;
+
+  function toggleTime() {
+    timeOn = !timeOn;
+    const sw = document.getElementById('time-switch');
+    const row = document.getElementById('time-toggle');
+    const opts = document.getElementById('time-options');
+    sw.classList.toggle('on', timeOn);
+    row.classList.toggle('active', timeOn);
+    opts.classList.toggle('visible', timeOn);
+  }
+
+  function selectTime(btn) {
+    document.querySelectorAll('.time-pill').forEach(p => p.classList.remove('selected'));
+    btn.classList.add('selected');
+  }
+
+  /* ─── VALIDATE — enable Create when name + location filled ──────── */
+  function validate() {
+    const name = document.getElementById('run-name').value.trim();
+    const loc  = document.getElementById('location').value.trim();
+    document.getElementById('create-btn').disabled = !(name && loc);
+  }
+
+  /* ─── CREATE ────────────────────────────────────────────────────── */
+  function createRun() {
+    const name   = document.getElementById('run-name').value.trim();
+    const loc    = document.getElementById('location').value.trim();
+    const format = document.querySelector('#format-pills .pill.selected').textContent.trim();
+    alert(`Run created!\n\n${name} @ ${loc}\n${format} · 5v5 · First to ${goal}${timeOn ? ' · Timed' : ''}`);
+  }
+</script>
+</body>
+</html>

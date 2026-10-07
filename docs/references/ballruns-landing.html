@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BallRuns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  /* ─── DESIGN TOKENS ─────────────────────────────────────────────── */
+  :root {
+    --bg:             #0e0f0c;
+    --bg-raised:      #161710;
+    --bg-surface:     #1e2019;
+    --bg-hover:       #252720;
+
+    --accent:         #c8f135;
+    --accent-dim:     #a0c228;
+    --accent-glow:    rgba(200, 241, 53, 0.15);
+
+    --text-primary:   #f0f0e8;
+    --text-secondary: #8a8c7a;
+    --text-muted:     #4a4c3e;
+
+    --border:         #2a2c22;
+    --border-accent:  rgba(200, 241, 53, 0.3);
+
+    --radius-sm:  6px;
+    --radius-md:  10px;
+    --radius-lg:  16px;
+
+    --font-display: 'Barlow Condensed', sans-serif;
+    --font-body:    'Barlow', sans-serif;
+  }
+
+  /* ─── RESET ─────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* ─── NOISE TEXTURE ─────────────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* ─── COURT LINE — decorative background element ────────────────── */
+  /* A subtle arc that references the three-point line                  */
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* ─── APP SHELL ─────────────────────────────────────────────────── */
+  .app {
+    position: relative;
+    z-index: 1;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  /* ─── WORDMARK ──────────────────────────────────────────────────── */
+  .wordmark {
+    padding-top: 56px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .wordmark-name {
+    font-family: var(--font-display);
+    font-size: 52px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    line-height: 0.9;
+  }
+
+  /* The accent underline — references court line markings */
+  .wordmark-line {
+    width: 48px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    margin-top: 10px;
+  }
+
+  .wordmark-tagline {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 10px;
+  }
+
+  /* ─── HERO AREA ─────────────────────────────────────────────────── */
+  /* Pushes the wordmark up, actions down                               */
+  .hero {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 48px;
+  }
+
+  .hero-inner {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* ─── JOIN INPUT BLOCK ──────────────────────────────────────────── */
+  /* Code input + Join button side by side                              */
+  .join-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .join-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding-left: 2px;
+  }
+
+  .join-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .join-input {
+    flex: 1;
+    height: 52px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0 14px;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    caret-color: var(--accent);
+    min-width: 0;
+  }
+
+  .join-input::placeholder {
+    color: var(--text-muted);
+    letter-spacing: 0.12em;
+    font-weight: 700;
+  }
+
+  .join-input:focus {
+    border-color: var(--border-accent);
+    background: var(--bg-hover);
+  }
+
+  /* Join button — inline with input */
+  .btn-join {
+    height: 52px;
+    padding: 0 20px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-join:hover {
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+  }
+
+  /* Active — when code is entered */
+  .btn-join.ready {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
+  .btn-join.ready:hover {
+    background: #d4f545;
+    border-color: #d4f545;
+    transform: translateY(-1px);
+  }
+
+  .btn-join svg { width: 14px; height: 14px; }
+
+  /* ─── DIVIDER ───────────────────────────────────────────────────── */
+  .or-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .or-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .or-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ─── PRIMARY CTA ───────────────────────────────────────────────── */
+  .btn-primary {
+    width: 100%;
+    height: 56px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary:hover {
+    background: #d4f545;
+    transform: translateY(-1px);
+  }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary svg { width: 16px; height: 16px; }
+
+  /* ─── SIGN IN LINK ──────────────────────────────────────────────── */
+  .signin-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding-top: 4px;
+  }
+
+  .signin-text {
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .signin-link {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.12s;
+    background: none;
+    border: none;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: var(--border);
+  }
+  .signin-link:hover { color: var(--text-primary); }
+
+  /* ─── PAGE LOAD ANIMATIONS ──────────────────────────────────────── */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .wordmark   { animation: fade-up 0.4s 0.00s ease-out both; }
+  .join-block { animation: fade-up 0.4s 0.10s ease-out both; }
+  .or-divider { animation: fade-up 0.4s 0.16s ease-out both; }
+  .btn-primary{ animation: fade-up 0.4s 0.20s ease-out both; }
+  .signin-row { animation: fade-up 0.4s 0.26s ease-out both; }
+
+  /* ─── CODE INPUT SHAKE — wrong code ────────────────────────────── */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+  }
+
+  .join-input.error {
+    border-color: #ff4040;
+    animation: shake 0.4s ease-out;
+  }
+
+  /* ─── SIGNED-IN STATE ────────────────────────────────────────── */
+
+  .si-status {
+    position: absolute;
+    top: 22px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: none;
+  }
+
+  .si-avatar {
+    position: absolute;
+    top: 58px;
+    right: 20px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--bg-hover);
+    border: 1.5px solid var(--border-accent);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+  }
+
+  .si-runs {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .section-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding-left: 2px;
+  }
+
+  .run-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    text-align: left;
+    width: 100%;
+  }
+
+  .run-card:hover { background: var(--bg-hover); }
+
+  .run-card--live {
+    border-color: var(--border-accent);
+    background: rgba(200, 241, 53, 0.04);
+  }
+
+  .run-card--live:hover { background: rgba(200, 241, 53, 0.08); }
+
+  .run-card-main {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .run-card-name {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+
+  .run-card-status-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  @keyframes pip-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+
+  .live-pip {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #3ddc84;
+    flex-shrink: 0;
+    animation: pip-pulse 1.8s ease-in-out infinite;
+  }
+
+  .run-card-status {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+  }
+
+  .run-card-sub {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .run-card-chevron {
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  /* Signed-in class toggled on .app */
+  .app.signed-in .si-status { display: block; }
+  .app.signed-in .si-avatar { display: flex; }
+  .app.signed-in .si-runs   { display: flex; }
+  .app.signed-in .join-block  { display: none; }
+  .app.signed-in .or-divider  { display: none; }
+  .app.signed-in .signin-row  { display: none; }
+
+  /* ─── DEMO TOGGLE ─────────────────────────────────────────────── */
+  .demo-toggle {
+    position: fixed;
+    bottom: 18px;
+    right: 18px;
+    z-index: 200;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .demo-toggle:hover {
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+  }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- SIGNED-IN: status label + avatar (hidden when signed out) -->
+  <div class="si-status" id="si-status">Signed-in Host</div>
+  <div class="si-avatar" id="si-avatar">JD</div>
+
+  <!-- WORDMARK -->
+  <div class="wordmark">
+    <span class="wordmark-name">Open<br>Run</span>
+    <div class="wordmark-line"></div>
+    <span class="wordmark-tagline">Run your game</span>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-inner">
+
+      <!-- SIGNED-IN: run cards (hidden when signed out) -->
+      <div class="si-runs" id="si-runs">
+        <span class="section-label">Your Runs</span>
+
+        <!-- Live card — only shown when user has an active run -->
+        <div class="run-card run-card--live" onclick="alert('Goes to /runs/friday-run/feed')">
+          <div class="run-card-main">
+            <span class="run-card-name">Friday Run</span>
+            <div class="run-card-status-row">
+              <span class="live-pip"></span>
+              <span class="run-card-status">Live · 3 Games</span>
+            </div>
+          </div>
+          <svg class="run-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+
+        <!-- Your Runs card — always shown when signed in -->
+        <div class="run-card" onclick="alert('Goes to /runs')">
+          <div class="run-card-main">
+            <span class="run-card-name">Your Runs</span>
+            <span class="run-card-sub">8 completed</span>
+          </div>
+          <svg class="run-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+
+      <!-- JOIN WITH CODE -->
+      <div class="join-block">
+        <span class="join-label">Have a code?</span>
+        <div class="join-row">
+          <input
+            class="join-input"
+            id="code-input"
+            type="text"
+            placeholder="ABC-12"
+            maxlength="6"
+            oninput="onCodeInput(this)"
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+          />
+          <button class="btn-join" id="join-btn" onclick="joinRun()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+            Join
+          </button>
+        </div>
+      </div>
+
+      <!-- DIVIDER -->
+      <div class="or-divider">
+        <div class="or-line"></div>
+        <span class="or-label">or</span>
+        <div class="or-line"></div>
+      </div>
+
+      <!-- CREATE RUN -->
+      <button class="btn-primary" onclick="alert('Opens Create Run')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Start a Run
+      </button>
+
+      <!-- SIGN IN -->
+      <div class="signin-row">
+        <span class="signin-text">Already have an account?</span>
+        <button class="signin-link" onclick="alert('Opens sign in')">Sign in</button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ─── CODE INPUT ────────────────────────────────────────────────── */
+  function onCodeInput(input) {
+    // Strip non-alphanumeric, uppercase, cap at 6
+    let val = input.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
+
+    // Auto-insert dash after 3 chars
+    if (val.length > 3) {
+      val = val.slice(0, 3) + '-' + val.slice(3);
+    }
+
+    input.value = val;
+    input.classList.remove('error');
+
+    // Activate join button when 6 chars entered (3 + dash + 3 = 7 chars with dash)
+    const ready = val.replace('-', '').length >= 5;
+    document.getElementById('join-btn').classList.toggle('ready', ready);
+  }
+
+  /* ─── JOIN ──────────────────────────────────────────────────────── */
+  function joinRun() {
+    const input = document.getElementById('code-input');
+    const code = input.value.trim();
+
+    if (code.replace('-', '').length < 5) return;
+
+    // Simulate: wrong code = error shake, right code = success
+    const valid = code.toUpperCase() === 'RKR-74';
+
+    if (valid) {
+      alert(`Joining run: ${code}\nOpens lobby / spectator view`);
+    } else {
+      input.classList.remove('error');
+      void input.offsetWidth; // force reflow to re-trigger animation
+      input.classList.add('error');
+      setTimeout(() => input.classList.remove('error'), 500);
+    }
+  }
+
+  /* ─── STATE TOGGLE (demo only) ──────────────────────────────────── */
+  let _signedIn = false;
+
+  function toggleSignedIn() {
+    _signedIn = !_signedIn;
+    document.querySelector('.app').classList.toggle('signed-in', _signedIn);
+    document.getElementById('demo-toggle').textContent = _signedIn ? '← Signed out' : '→ Signed in';
+  }
+</script>
+
+<!-- DEMO STATE TOGGLE -->
+<button class="demo-toggle" id="demo-toggle" onclick="toggleSignedIn()">→ Signed in</button>
+
+</body>
+</html>
