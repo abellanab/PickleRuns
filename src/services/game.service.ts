@@ -36,6 +36,23 @@ export class WinnerRequiredError extends Error {
 }
 
 const COURT_OPEN_GAME_CONSTRAINT = "uq_games_court_open";
+const GAMES_COURT_FK_CONSTRAINT = "games_court_id_fkey";
+
+function isForeignKeyViolation(err: unknown): boolean {
+  let current: unknown = err;
+  for (let depth = 0; depth < 3 && typeof current === "object" && current !== null; depth++) {
+    const e = current as { code?: unknown; constraint_name?: unknown; message?: unknown; cause?: unknown };
+    if (
+      e.code === "23503" &&
+      (e.constraint_name === GAMES_COURT_FK_CONSTRAINT ||
+        (typeof e.message === "string" && e.message.includes(GAMES_COURT_FK_CONSTRAINT)))
+    ) {
+      return true;
+    }
+    current = e.cause;
+  }
+  return false;
+}
 
 // Thrown when a game-creation attempt targets a run that has already been
 // closed. Maps to 409 — a completed run is terminal; no new games.
@@ -110,13 +127,6 @@ export async function createGame(
   if (!run) throw new RunNotFoundError();
   if (run.status === "completed") throw new RunCompletedError();
 
-  const [court] = await db
-    .select({ id: courts.id })
-    .from(courts)
-    .where(and(eq(courts.id, courtId), eq(courts.runId, runId)))
-    .limit(1);
-  if (!court) throw new CourtNotFoundError();
-
   const allEntryIds = [...sideAIds, ...sideBIds];
   const sizesValid =
     sideAIds.length >= 1 &&
@@ -126,17 +136,24 @@ export async function createGame(
     Math.abs(sideAIds.length - sideBIds.length) <= 1;
   if (!sizesValid || new Set(allEntryIds).size !== allEntryIds.length) throw new InvalidRosterError();
 
-  const valid = await db
-    .select({ id: queueEntries.id })
-    .from(queueEntries)
-    .where(and(inArray(queueEntries.id, allEntryIds), eq(queueEntries.runId, runId)));
-  if (valid.length !== allEntryIds.length) throw new InvalidEntryIdsError();
-
   try {
     return await db.transaction(async (tx) => {
       // Per-run advisory lock so concurrent creations read a consistent MAX and
       // eligibility snapshot instead of colliding on game_number.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${runId}))`);
+
+      const [court] = await tx
+        .select({ id: courts.id })
+        .from(courts)
+        .where(and(eq(courts.id, courtId), eq(courts.runId, runId)))
+        .limit(1);
+      if (!court) throw new CourtNotFoundError();
+
+      const valid = await tx
+        .select({ id: queueEntries.id })
+        .from(queueEntries)
+        .where(and(inArray(queueEntries.id, allEntryIds), eq(queueEntries.runId, runId)));
+      if (valid.length !== allEntryIds.length) throw new InvalidEntryIdsError();
 
       const eligible = new Set((await getEligiblePlayers(runId, tx)).map((p) => p.entryId));
       if (!allEntryIds.every((id) => eligible.has(id))) throw new PlayerUnavailableError();
@@ -167,6 +184,7 @@ export async function createGame(
     });
   } catch (err) {
     if (isUniqueViolationOn(err, COURT_OPEN_GAME_CONSTRAINT)) throw new CourtOccupiedError();
+    if (isForeignKeyViolation(err)) throw new CourtNotFoundError();
     throw err;
   }
 }
@@ -407,9 +425,9 @@ export async function endGame(
     if (!game || game.runId !== runId) throw new GameNotFoundError();
     if (game.status === "completed") return game;
 
-    // Per-run advisory lock — same key as createGame — so a concurrent
-    // createGame for the same run queues behind us and cannot insert a new
-    // game row for a run we are about to close.
+    // Per-run advisory lock — same key as createGame — so court and
+    // eligibility reads in a concurrent createGame are serialized against
+    // this completion.
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${game.runId}))`);
 
     const [run] = await tx.select().from(runs).where(eq(runs.id, runId)).limit(1);

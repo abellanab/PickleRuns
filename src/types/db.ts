@@ -21,7 +21,7 @@ export type NewRun = typeof runs.$inferInsert;
 export type Court = typeof courts.$inferSelect;
 export type NewCourt = typeof courts.$inferInsert;
 
-export type QueueEntry =typeof queueEntries.$inferSelect;
+export type QueueEntry = typeof queueEntries.$inferSelect;
 export type NewQueueEntry = typeof queueEntries.$inferInsert;
 
 export type Game = typeof games.$inferSelect;

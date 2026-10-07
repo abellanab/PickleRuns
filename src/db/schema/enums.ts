@@ -8,7 +8,7 @@ export const runMode = pgEnum("run_mode", [
 
 export const rotationStyle = pgEnum("rotation_style", ["winner_stays", "rotate_all"]);
 
-export const runStatus =pgEnum("run_status", [
+export const runStatus = pgEnum("run_status", [
   "lobby",
   "active",
   "completed",

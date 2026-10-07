@@ -63,17 +63,25 @@ export default function CourtAssignPage() {
   const [addError, setAddError] = useState<string | null>(null);
 
   useEffect(() => {
+    seededCourtRef.current = null;
     reset();
     return reset;
   }, [reset, courtId]);
 
-  const seededRef = useRef(false);
+  const seededCourtRef = useRef<string | null>(null);
   useEffect(() => {
-    if (seededRef.current || !isHost) return;
-    if (proposalQuery.isPending) return;
-    seededRef.current = true;
+    if (seededCourtRef.current === courtId || !isHost) return;
+    if (!proposalQuery.isFetchedAfterMount || proposalQuery.isFetching) return;
+    seededCourtRef.current = courtId;
     init(courtId, proposalQuery.data ?? { sideA: [], sideB: [], needed: 4 });
-  }, [isHost, proposalQuery.isPending, proposalQuery.data, courtId, init]);
+  }, [
+    isHost,
+    proposalQuery.isFetchedAfterMount,
+    proposalQuery.isFetching,
+    proposalQuery.data,
+    courtId,
+    init,
+  ]);
 
   const names = new Map<string, string>();
   for (const e of queueQuery.data?.waiting ?? []) names.set(e.id, e.displayName);

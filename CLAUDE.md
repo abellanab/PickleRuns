@@ -231,7 +231,7 @@ db (src/db, Drizzle) / Supabase
 - `(protected)/layout.tsx` is a pure passthrough — do not add auth checks here.
 - In API routes, authenticate with `createClient()` from `src/lib/supabase/server` + `auth.getUser()`. Pass the resolved `userId` to the service. The service scopes every query to that `userId` (or to a `runId` that the route has already resolved to be owned by `userId`).
 - RLS enforces authorization at the DB level as a second line — do not re-implement access checks in services, but do pass `userId` in so the service can scope its queries.
-- Guest mutations (join queue) go through API routes — RLS `WITH CHECK (true)` allows them.
+- Guest mutations (join queue) go through API routes, which write as a role that bypasses RLS. RLS has no client INSERT policy on `queue_entries` and no write policies on `courts`, so run-mode, status and court-cap rules cannot be bypassed from a client.
 
 ---
 
