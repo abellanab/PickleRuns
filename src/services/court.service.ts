@@ -138,24 +138,20 @@ export async function getPartnerMap(entryIds: string[]): Promise<Map<string, str
 }
 
 export async function getCourtsOverview(runId: string): Promise<CourtsOverview> {
-  const [run] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
+  const [[run], courtRows, openGames] = await Promise.all([
+    db.select().from(runs).where(eq(runs.id, runId)).limit(1),
+    db.select().from(courts).where(eq(courts.runId, runId)).orderBy(asc(courts.number)),
+    db
+      .select()
+      .from(games)
+      .where(and(eq(games.runId, runId), inArray(games.status, [...openGameStatuses]))),
+  ]);
   if (!run) throw new RunNotFoundError();
 
-  const courtRows = await db
-    .select()
-    .from(courts)
-    .where(eq(courts.runId, runId))
-    .orderBy(asc(courts.number));
-
-  const openGames = await db
-    .select()
-    .from(games)
-    .where(and(eq(games.runId, runId), inArray(games.status, [...openGameStatuses])));
-
-  const rosterRows =
+  const loadRoster = async () =>
     openGames.length === 0
       ? []
-      : await db
+      : db
           .select({
             gameId: gamePlayers.gameId,
             team: gamePlayers.team,
@@ -168,34 +164,46 @@ export async function getCourtsOverview(runId: string): Promise<CourtsOverview> 
           .where(inArray(gamePlayers.gameId, openGames.map((g) => g.id)))
           .orderBy(asc(queueEntries.position));
 
-  const lastGames =
-    courtRows.length === 0
-      ? []
-      : await db
-          .selectDistinctOn([games.courtId])
-          .from(games)
-          .where(
-            and(
-              eq(games.status, "completed"),
-              inArray(games.courtId, courtRows.map((c) => c.id)),
-            ),
-          )
-          .orderBy(games.courtId, desc(games.gameNumber));
+  const loadLast = async () => {
+    if (courtRows.length === 0) return { lastGames: [], lastRosterRows: [] };
+    const lastGames = await db
+      .selectDistinctOn([games.courtId])
+      .from(games)
+      .where(
+        and(
+          eq(games.status, "completed"),
+          inArray(games.courtId, courtRows.map((c) => c.id)),
+        ),
+      )
+      .orderBy(games.courtId, desc(games.gameNumber));
+    if (lastGames.length === 0) return { lastGames, lastRosterRows: [] };
+    const lastRosterRows = await db
+      .select({
+        gameId: gamePlayers.gameId,
+        team: gamePlayers.team,
+        entryId: queueEntries.id,
+        displayName: queueEntries.displayName,
+      })
+      .from(gamePlayers)
+      .innerJoin(queueEntries, eq(queueEntries.id, gamePlayers.queueEntryId))
+      .where(inArray(gamePlayers.gameId, lastGames.map((g) => g.id)))
+      .orderBy(asc(queueEntries.position));
+    return { lastGames, lastRosterRows };
+  };
 
-  const lastRosterRows =
-    lastGames.length === 0
-      ? []
-      : await db
-          .select({
-            gameId: gamePlayers.gameId,
-            team: gamePlayers.team,
-            entryId: queueEntries.id,
-            displayName: queueEntries.displayName,
-          })
-          .from(gamePlayers)
-          .innerJoin(queueEntries, eq(queueEntries.id, gamePlayers.queueEntryId))
-          .where(inArray(gamePlayers.gameId, lastGames.map((g) => g.id)))
-          .orderBy(asc(queueEntries.position));
+  const loadNextUp = async (): Promise<CourtPlayer[]> => {
+    if (run.runMode === "score_only") return [];
+    const eligible = await getEligiblePlayers(runId);
+    const partnerOf = await getPartnerMap(eligible.map((p) => p.entryId));
+    const group = pickNextGroup(eligible, partnerOf);
+    return [...group.sideA, ...group.sideB];
+  };
+
+  const [rosterRows, { lastGames, lastRosterRows }, nextUp] = await Promise.all([
+    loadRoster(),
+    loadLast(),
+    loadNextUp(),
+  ]);
 
   const toLastGame = (courtId: string): CourtLastGame | null => {
     const last = lastGames.find((g) => g.courtId === courtId);
@@ -242,14 +250,6 @@ export async function getCourtsOverview(runId: string): Promise<CourtsOverview> 
       lastGame,
     };
   });
-
-  let nextUp: CourtPlayer[] = [];
-  if (run.runMode !== "score_only") {
-    const eligible = await getEligiblePlayers(runId);
-    const partnerOf = await getPartnerMap(eligible.map((p) => p.entryId));
-    const group = pickNextGroup(eligible, partnerOf);
-    nextUp = [...group.sideA, ...group.sideB];
-  }
 
   return { courts: courtStates, nextUp };
 }
@@ -361,14 +361,15 @@ async function getLatestWinnersByCourt(
 }
 
 export async function getFillProposal(runId: string, courtId: string): Promise<FillProposal> {
-  const [run] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
+  const [[run], [court]] = await Promise.all([
+    db.select().from(runs).where(eq(runs.id, runId)).limit(1),
+    db
+      .select({ id: courts.id })
+      .from(courts)
+      .where(and(eq(courts.id, courtId), eq(courts.runId, runId)))
+      .limit(1),
+  ]);
   if (!run) throw new RunNotFoundError();
-
-  const [court] = await db
-    .select({ id: courts.id })
-    .from(courts)
-    .where(and(eq(courts.id, courtId), eq(courts.runId, runId)))
-    .limit(1);
   if (!court) throw new CourtNotFoundError();
 
   if (run.runMode === "score_only") return { sideA: [], sideB: [], needed: 4 };
@@ -378,11 +379,13 @@ export async function getFillProposal(runId: string, courtId: string): Promise<F
   let pool = eligible;
 
   if (run.rotationStyle === "winner_stays") {
-    const courtRows = await db.select({ id: courts.id }).from(courts).where(eq(courts.runId, runId));
-    const busy = await db
-      .select({ courtId: games.courtId })
-      .from(games)
-      .where(and(eq(games.runId, runId), inArray(games.status, [...openGameStatuses])));
+    const [courtRows, busy] = await Promise.all([
+      db.select({ id: courts.id }).from(courts).where(eq(courts.runId, runId)),
+      db
+        .select({ courtId: games.courtId })
+        .from(games)
+        .where(and(eq(games.runId, runId), inArray(games.status, [...openGameStatuses]))),
+    ]);
     const busyIds = new Set(busy.map((b) => b.courtId));
     const idleOtherIds = courtRows.map((c) => c.id).filter((id) => id !== courtId && !busyIds.has(id));
 

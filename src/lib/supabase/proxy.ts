@@ -17,7 +17,7 @@ export async function updateSession(request: NextRequest) {
 
   let supabaseResponse = NextResponse.next({ request });
 
-  // Do not run code between createServerClient and getUser().
+  // Do not run code between createServerClient and getClaims().
   // A simple mistake could make it very hard to debug random logouts.
   const supabase = createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
@@ -40,9 +40,9 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Local JWT verification avoids a network round trip per navigation; pages and routes still call getUser().
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
