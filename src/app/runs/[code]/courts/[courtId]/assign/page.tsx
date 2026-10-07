@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { DragEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { GripVertical, Shuffle } from "lucide-react";
 import { Topbar } from "@/components/ui/topbar";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/client";
@@ -15,7 +17,14 @@ import {
   MAX_PER_SIDE,
   useCourtAssignmentStore,
   type SlotSide,
+  type SlotTarget,
 } from "@/stores/court-assignment.store";
+
+const DRAGGABLE = "select-none [-webkit-touch-callout:none] transition-[opacity,transform]";
+const DRAGGING = "opacity-40 scale-[0.97]";
+const POOL_KEY = "pool";
+const FLASH_MS = 450;
+const CLICK_GUARD_MS = 250;
 
 const LABEL = "font-display text-[11px] font-bold tracking-[0.14em] uppercase text-text-muted";
 
@@ -55,12 +64,36 @@ export default function CourtAssignPage() {
   const init = useCourtAssignmentStore((s) => s.init);
   const select = useCourtAssignmentStore((s) => s.select);
   const swapOrPlace = useCourtAssignmentStore((s) => s.swapOrPlace);
+  const drop = useCourtAssignmentStore((s) => s.drop);
+  const scramble = useCourtAssignmentStore((s) => s.scramble);
   const remove = useCourtAssignmentStore((s) => s.remove);
   const reset = useCourtAssignmentStore((s) => s.reset);
 
   const [newName, setNewName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [overKey, setOverKey] = useState<string | null>(null);
+  const [flash, setFlash] = useState(false);
+  const suppressClickRef = useRef(false);
+  const suppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    void import("drag-drop-touch");
+  }, []);
+
+  useEffect(() => {
+    if (!flash) return;
+    const timer = setTimeout(() => setFlash(false), FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [flash]);
+
+  useEffect(
+    () => () => {
+      if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     seededCourtRef.current = null;
@@ -105,12 +138,61 @@ export default function CourtAssignPage() {
           ? `Start short-handed (${count} players)`
           : "Start match";
 
+  function guardClick() {
+    suppressClickRef.current = true;
+    if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+    suppressTimerRef.current = setTimeout(() => {
+      suppressClickRef.current = false;
+    }, CLICK_GUARD_MS);
+  }
+
+  function handleDragStart(e: DragEvent<HTMLElement>, entryId: string) {
+    e.dataTransfer.setData("text/plain", entryId);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingId(entryId);
+  }
+
+  function handleDragEnd() {
+    setDraggingId(null);
+    setOverKey(null);
+    guardClick();
+  }
+
+  function handleDragOver(e: DragEvent<HTMLElement>, key: string) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setOverKey(key);
+  }
+
+  function handleDragLeave(e: DragEvent<HTMLElement>, key: string) {
+    const next = e.relatedTarget;
+    if (next instanceof Node && e.currentTarget.contains(next)) return;
+    setOverKey((current) => (current === key ? null : current));
+  }
+
+  function handleDrop(e: DragEvent<HTMLElement>, target: SlotTarget) {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = e.dataTransfer.getData("text/plain") || draggingId;
+    setOverKey(null);
+    setDraggingId(null);
+    guardClick();
+    if (id && names.has(id)) drop(id, target);
+  }
+
+  function handleScramble() {
+    scramble();
+    setFlash(true);
+  }
+
   function onTapSlot(side: "A" | "B", entryId: string | null) {
+    if (suppressClickRef.current) return;
     if (selected) swapOrPlace({ side, entryId });
     else if (entryId) select({ side, entryId });
   }
 
   function onTapPool(entryId: string) {
+    if (suppressClickRef.current) return;
     if (selected) swapOrPlace({ side: "pool", entryId });
     else select({ side: "pool", entryId });
   }
@@ -209,7 +291,15 @@ export default function CourtAssignPage() {
             names={names}
             selectedId={selected?.entryId ?? null}
             armed={!!selected}
+            draggingId={draggingId}
+            overKey={overKey}
+            flash={flash}
             onTap={onTapSlot}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
           />
           <SideCard
             label="Side B"
@@ -218,8 +308,33 @@ export default function CourtAssignPage() {
             names={names}
             selectedId={selected?.entryId ?? null}
             armed={!!selected}
+            draggingId={draggingId}
+            overKey={overKey}
+            flash={flash}
             onTap={onTapSlot}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
           />
+        </div>
+
+        <div className="flex flex-col gap-2 -mt-1">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleScramble}
+            disabled={count < 2}
+            aria-label="Scramble players"
+            className="w-full min-h-[44px] gap-2"
+          >
+            <Shuffle className="h-4 w-4" aria-hidden="true" />
+            Scramble
+          </Button>
+          <p className="font-body text-[12px] text-text-muted text-center">
+            Tap players, or drag by the ⋮⋮ handle
+          </p>
         </div>
 
         {selected && (
@@ -246,7 +361,15 @@ export default function CourtAssignPage() {
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
+        <div
+          onDragOver={(e) => handleDragOver(e, POOL_KEY)}
+          onDragLeave={(e) => handleDragLeave(e, POOL_KEY)}
+          onDrop={(e) => handleDrop(e, { side: "pool", entryId: null })}
+          className={cn(
+            "flex flex-col gap-2 rounded-md border border-transparent transition-colors",
+            overKey === POOL_KEY && draggingId && "border-border-accent bg-accent-glow",
+          )}
+        >
           <div className="flex items-center justify-between">
             <span className={LABEL}>Waiting</span>
             <span className={LABEL}>{pool.length}</span>
@@ -259,24 +382,47 @@ export default function CourtAssignPage() {
             pool.map((e) => {
               const isSelected = selected?.entryId === e.id;
               return (
-                <button
+                <div
                   key={e.id}
-                  type="button"
-                  onClick={() => onTapPool(e.id)}
                   className={cn(
-                    "min-h-[48px] w-full rounded-md border px-3 flex items-center gap-3 text-left transition-colors active:scale-[0.99]",
-                    isSelected
-                      ? "border-border-accent bg-accent-glow text-accent"
-                      : "border-border bg-bg-surface text-text-primary",
+                    "flex items-stretch gap-1 transition-[opacity,transform]",
+                    draggingId === e.id && DRAGGING,
                   )}
                 >
-                  <span className="font-display text-[14px] font-extrabold uppercase tracking-[0.03em] flex-1 truncate">
-                    {e.displayName}
-                  </span>
-                  <span className="font-display text-[11px] font-semibold tracking-[0.06em] text-text-muted flex-shrink-0">
-                    {e.gamesPlayed} {e.gamesPlayed === 1 ? "game" : "games"}
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onTapPool(e.id)}
+                    className={cn(
+                      "min-h-[48px] min-w-0 flex-1 rounded-md border px-3 flex items-center gap-3 text-left transition-colors active:scale-[0.99]",
+                      isSelected
+                        ? "border-border-accent bg-accent-glow text-accent"
+                        : "border-border bg-bg-surface text-text-primary",
+                    )}
+                  >
+                    <span className="font-display text-[14px] font-extrabold uppercase tracking-[0.03em] flex-1 truncate">
+                      {e.displayName}
+                    </span>
+                    <span className="font-display text-[11px] font-semibold tracking-[0.06em] text-text-muted flex-shrink-0">
+                      {e.gamesPlayed} {e.gamesPlayed === 1 ? "game" : "games"}
+                    </span>
+                  </button>
+                  <div
+                    draggable
+                    aria-hidden="true"
+                    onDragStart={(ev) => {
+                      const row = ev.currentTarget.parentElement;
+                      if (row) ev.dataTransfer.setDragImage(row, 24, 24);
+                      handleDragStart(ev, e.id);
+                    }}
+                    onDragEnd={handleDragEnd}
+                    className={cn(
+                      DRAGGABLE,
+                      "w-[44px] min-h-[48px] flex-shrink-0 rounded-md flex items-center justify-center text-text-muted cursor-grab active:text-text-primary",
+                    )}
+                  >
+                    <GripVertical className="h-5 w-5" />
+                  </div>
+                </div>
               );
             })
           )}
@@ -337,45 +483,90 @@ interface SideCardProps {
   names: Map<string, string>;
   selectedId: string | null;
   armed: boolean;
+  draggingId: string | null;
+  overKey: string | null;
+  flash: boolean;
   onTap: (side: "A" | "B", entryId: string | null) => void;
+  onDragStart: (e: DragEvent<HTMLElement>, entryId: string) => void;
+  onDragEnd: () => void;
+  onDragOver: (e: DragEvent<HTMLElement>, key: string) => void;
+  onDragLeave: (e: DragEvent<HTMLElement>, key: string) => void;
+  onDrop: (e: DragEvent<HTMLElement>, target: SlotTarget) => void;
 }
 
-function SideCard({ label, side, ids, names, selectedId, armed, onTap }: SideCardProps) {
+function SideCard({
+  label,
+  side,
+  ids,
+  names,
+  selectedId,
+  armed,
+  draggingId,
+  overKey,
+  flash,
+  onTap,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: SideCardProps) {
   return (
-    <div className="rounded-md border border-border bg-bg-surface p-3 flex flex-col gap-2">
+    <div
+      className={cn(
+        "rounded-md border border-border bg-bg-surface p-3 flex flex-col gap-2 transition-[transform,box-shadow]",
+        flash && "ring-2 ring-border-accent motion-safe:scale-[1.03]",
+      )}
+    >
       <span className={LABEL}>{label}</span>
       {Array.from({ length: MAX_PER_SIDE }).map((_, i) => {
         const entryId = ids[i] ?? null;
         const isSelected = entryId !== null && entryId === selectedId;
+        const key = `${side}:${i}`;
+        const isOver = overKey === key && draggingId !== null;
+        const slotName = entryId ? names.get(entryId) ?? "Player" : "empty";
         return (
-          <button
+          <div
             key={i}
-            type="button"
-            onClick={() => onTap(side, entryId)}
-            disabled={entryId === null && !armed}
-            className={cn(
-              "min-h-[56px] w-full rounded-md border px-3 flex items-center text-left transition-colors active:scale-[0.98]",
-              isSelected
-                ? "border-border-accent bg-accent-glow text-accent"
-                : entryId
-                  ? "border-border bg-bg-hover text-text-primary"
-                  : cn(
-                      "border-dashed border-border text-text-muted",
-                      armed && "border-border-accent",
-                    ),
-            )}
+            draggable={entryId !== null}
+            onDragStart={entryId ? (e) => onDragStart(e, entryId) : undefined}
+            onDragEnd={entryId ? onDragEnd : undefined}
+            onDragOver={(e) => onDragOver(e, key)}
+            onDragLeave={(e) => onDragLeave(e, key)}
+            onDrop={(e) => onDrop(e, { side, entryId })}
+            className={cn(DRAGGABLE, entryId !== null && entryId === draggingId && DRAGGING)}
           >
-            <span
+            <button
+              type="button"
+              onClick={() => onTap(side, entryId)}
+              disabled={entryId === null && !armed}
+              aria-label={`Side ${side} slot ${i + 1}: ${slotName}`}
               className={cn(
-                "truncate",
-                entryId
-                  ? "font-display text-[14px] font-extrabold uppercase tracking-[0.03em]"
-                  : "font-body text-[13px]",
+                "min-h-[56px] w-full rounded-md border px-3 flex items-center text-left transition-colors active:scale-[0.98] disabled:pointer-events-none",
+                isOver
+                  ? "border-border-accent bg-accent-glow"
+                  : isSelected
+                    ? "border-border-accent bg-accent-glow text-accent"
+                    : entryId
+                      ? "border-border bg-bg-hover text-text-primary"
+                      : cn(
+                          "border-dashed border-border text-text-muted",
+                          armed && "border-border-accent",
+                        ),
               )}
             >
-              {entryId ? names.get(entryId) ?? "Player" : "Empty"}
-            </span>
-          </button>
+              <span
+                className={cn(
+                  "truncate",
+                  entryId
+                    ? "font-display text-[14px] font-extrabold uppercase tracking-[0.03em]"
+                    : "font-body text-[13px]",
+                )}
+              >
+                {entryId ? names.get(entryId) ?? "Player" : "Empty"}
+              </span>
+            </button>
+          </div>
         );
       })}
     </div>
