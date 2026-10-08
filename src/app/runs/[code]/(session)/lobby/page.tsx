@@ -15,7 +15,6 @@ import { winnerText } from "@/components/ui/game-breakdown";
 import {
   useAddCourtMutation,
   useCourts,
-  useFillProposal,
   useRemoveCourtMutation,
   type CourtState,
 } from "@/hooks/use-courts";
@@ -315,9 +314,7 @@ function CourtSlot({ code, court, run, isHost, canRemove }: CourtSlotProps) {
   const removeMutation = useRemoveCourtMutation(code);
   const [askWinner, setAskWinner] = useState(false);
 
-  const offerEnabled = isHost && !game && run.runMode !== "score_only";
-  const proposalQuery = useFillProposal(code, court.id, offerEnabled);
-  const proposal = proposalQuery.data ?? null;
+  const proposal = court.fillProposal;
 
   function endMatch(winner?: "team_a" | "team_b") {
     endMutation.mutate(winner ? { winner } : undefined, {
@@ -359,7 +356,6 @@ function CourtSlot({ code, court, run, isHost, canRemove }: CourtSlotProps) {
       isHost={isHost}
       canRemove={canRemove}
       proposal={proposal}
-      proposalLoading={offerEnabled && proposalQuery.isPending}
       askWinner={askWinner}
       endPending={endMutation.isPending}
       endError={endError}

@@ -15,7 +15,6 @@ interface CourtCardProps {
   isHost: boolean;
   canRemove: boolean;
   proposal: FillProposal | null;
-  proposalLoading: boolean;
   askWinner: boolean;
   endPending: boolean;
   endError: string | null;
@@ -47,7 +46,6 @@ export function CourtCard({
   isHost,
   canRemove,
   proposal,
-  proposalLoading,
   askWinner,
   endPending,
   endError,
@@ -169,10 +167,10 @@ export function CourtCard({
               <span className="font-body text-[13px] text-text-muted">No match in progress</span>
             )}
 
-            {isHost && isQueueMode && (
+            {isQueueMode && (
               <FillOffer
                 proposal={proposal}
-                loading={proposalLoading}
+                isHost={isHost}
                 assignHref={assignHref}
                 startPending={startPending}
                 onStart={onStart}
@@ -233,39 +231,53 @@ export function CourtCard({
   );
 }
 
+function RosterRow({ label, players }: { label: string; players: CourtPlayer[] }) {
+  return (
+    <div className="flex items-baseline gap-2 min-w-0">
+      <span className={`${labelClass} min-w-[52px] flex-shrink-0`}>{label}</span>
+      {players.length > 0 ? (
+        <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary truncate">
+          {names(players)}
+        </span>
+      ) : (
+        <span className="font-body text-[13px] text-text-muted">—</span>
+      )}
+    </div>
+  );
+}
+
 function FillOffer({
   proposal,
-  loading,
+  isHost,
   assignHref,
   startPending,
   onStart,
 }: {
   proposal: FillProposal | null;
-  loading: boolean;
+  isHost: boolean;
   assignHref: string;
   startPending: boolean;
   onStart: () => void;
 }) {
-  if (loading || !proposal) {
-    return <div className="h-[48px] rounded-md bg-bg-hover animate-pulse" />;
+  const hasPlayers = !!proposal && proposal.sideA.length + proposal.sideB.length > 0;
+
+  if (!proposal || !hasPlayers) {
+    return <span className="font-body text-[13px] text-text-muted">Waiting for players</span>;
   }
 
-  const hasPlayers = proposal.sideA.length + proposal.sideB.length > 0;
+  const roster = (
+    <div className="rounded-md border border-border bg-bg-hover px-3 py-2.5 flex flex-col gap-1.5">
+      <span className={labelClass}>Next up on this court</span>
+      <RosterRow label="Side A" players={proposal.sideA} />
+      <RosterRow label="Side B" players={proposal.sideB} />
+    </div>
+  );
+
+  if (!isHost) return roster;
 
   return (
     <div className="flex flex-col gap-2.5">
-      {hasPlayers && (
-        <div className="rounded-md border border-border bg-bg-hover px-3 py-2.5 flex flex-col gap-1">
-          <span className={labelClass}>Next match</span>
-          <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary">
-            {names(proposal.sideA) || "—"}
-          </span>
-          <span className={labelClass}>vs</span>
-          <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary">
-            {names(proposal.sideB) || "—"}
-          </span>
-        </div>
-      )}
+      {roster}
 
       {proposal.needed === 0 ? (
         <>

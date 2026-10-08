@@ -95,13 +95,14 @@ export default function CourtAssignPage() {
     [],
   );
 
+  const seededCourtRef = useRef<string | null>(null);
+
   useEffect(() => {
     seededCourtRef.current = null;
     reset();
     return reset;
   }, [reset, courtId]);
 
-  const seededCourtRef = useRef<string | null>(null);
   useEffect(() => {
     if (seededCourtRef.current === courtId || !isHost) return;
     if (!proposalQuery.isFetchedAfterMount || proposalQuery.isFetching) return;
