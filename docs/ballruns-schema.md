@@ -71,7 +71,7 @@ Values live in schema.ts. What each value *means* / *drives*:
 
 | Value | Behavior |
 |---|---|
-| `rotate_all` | All four players go to the back, winners ahead of losers (default) |
+| `rotate_all` | (UI label: Stacking) All four players go to the back, winners ahead of losers (default) |
 | `winner_stays` | Only the losing side goes to the back; winners keep their positions |
 
 A game with a NULL winner rotates all four players in either style, keeping

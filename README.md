@@ -38,7 +38,7 @@ PickleRuns keeps the chaos out of open pickleball play. Hosts create a run and s
 
 **Paddle-stacking queue.** One ordered queue per run. Add players, mark them out, reinstate, or remove them, with changes reflected instantly for everyone via Supabase Realtime. A court is filled from the front of the queue, and pairs that just played stay partners.
 
-**Rotation styles.** `rotate_all` sends all four players to the back with winners ahead of losers; `winner_stays` sends only the losing side to the back. The database trigger does the rotation on game completion.
+**Rotation styles.** `rotate_all` (UI label: Stacking) sends all four players to the back with winners ahead of losers; `winner_stays` sends only the losing side to the back. The database trigger does the rotation on game completion.
 
 **Live scoreboard.** Tap to score one point at a time, with undo that voids the point without losing the audit trail. Games end automatically at the score goal (11 or 15), with an optional win-by-two. There is no clock or time limit.
 

@@ -19,7 +19,7 @@ const RUN_MODES: { value: RunMode; title: string; description: string }[] = [
 ];
 
 const ROTATION_OPTIONS: { value: RotationStyle; label: string }[] = [
-  { value: "rotate_all", label: "Rotate all" },
+  { value: "rotate_all", label: "Stacking" },
   { value: "winner_stays", label: "Winner stays" },
 ];
 
@@ -244,7 +244,7 @@ export default function CreateRunPage() {
             </div>
             <span className="font-body text-[12px] text-text-muted">
               {rotationStyle === "rotate_all"
-                ? "All four go to the back — winners queue ahead of losers, partners stay paired."
+                ? "Stacking: all four go to the back — winners queue ahead of losers, partners stay paired."
                 : "Winner stays: winners stay on court, losers go to the back."}
             </span>
           </div>
