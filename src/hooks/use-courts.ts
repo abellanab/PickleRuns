@@ -32,6 +32,7 @@ export type CourtState = {
   name: string | null;
   game: CourtGame | null;
   lastGame: CourtLastGame | null;
+  fillProposal: FillProposal | null;
 };
 
 export type CourtsOverview = { courts: CourtState[]; nextUp: CourtPlayer[] };
@@ -56,6 +57,7 @@ export function useFillProposal(code: string, courtId: string, enabled: boolean)
       apiGet<FillProposal>(`/api/runs/${code}/courts/${courtId}/fill-proposal`),
     enabled,
     staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 

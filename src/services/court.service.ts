@@ -67,9 +67,16 @@ export type CourtState = {
   name: string | null;
   game: CourtGame | null;
   lastGame: CourtLastGame | null;
+  fillProposal: FillProposal | null;
 };
 export type CourtsOverview = { courts: CourtState[]; nextUp: CourtPlayer[] };
 export type FillProposal = { sideA: CourtPlayer[]; sideB: CourtPlayer[]; needed: number };
+
+type AllocationContext = {
+  run: Pick<typeof runs.$inferSelect, "runMode" | "rotationStyle">;
+  courtRows: { id: string; number: number }[];
+  busyCourtIds: Set<string>;
+};
 
 type Executor = Pick<typeof db, "select">;
 
@@ -191,19 +198,16 @@ export async function getCourtsOverview(runId: string): Promise<CourtsOverview> 
     return { lastGames, lastRosterRows };
   };
 
-  const loadNextUp = async (): Promise<CourtPlayer[]> => {
-    if (run.runMode === "score_only") return [];
-    const eligible = await getEligiblePlayers(runId);
-    const partnerOf = await getPartnerMap(eligible.map((p) => p.entryId));
-    const group = pickNextGroup(eligible, partnerOf);
-    return [...group.sideA, ...group.sideB];
-  };
-
-  const [rosterRows, { lastGames, lastRosterRows }, nextUp] = await Promise.all([
+  const [rosterRows, { lastGames, lastRosterRows }, allocation] = await Promise.all([
     loadRoster(),
     loadLast(),
-    loadNextUp(),
+    allocateFillProposalsFor(runId, {
+      run,
+      courtRows,
+      busyCourtIds: new Set(openGames.map((g) => g.courtId)),
+    }),
   ]);
+  const { proposals, nextUp } = allocation;
 
   const toLastGame = (courtId: string): CourtLastGame | null => {
     const last = lastGames.find((g) => g.courtId === courtId);
@@ -227,7 +231,14 @@ export async function getCourtsOverview(runId: string): Promise<CourtsOverview> 
     const lastGame = toLastGame(court.id);
     const game = openGames.find((g) => g.courtId === court.id);
     if (!game || (game.status !== "pending" && game.status !== "active")) {
-      return { id: court.id, number: court.number, name: court.name, game: null, lastGame };
+      return {
+        id: court.id,
+        number: court.number,
+        name: court.name,
+        game: null,
+        lastGame,
+        fillProposal: proposals.get(court.id) ?? null,
+      };
     }
     const toSide = (team: "team_a" | "team_b"): CourtPlayer[] =>
       rosterRows
@@ -248,6 +259,7 @@ export async function getCourtsOverview(runId: string): Promise<CourtsOverview> 
         sideB: toSide("team_b"),
       },
       lastGame,
+      fillProposal: null,
     };
   });
 
@@ -271,7 +283,14 @@ export async function createCourt(runId: string): Promise<CourtState> {
 
     await tx.update(runs).set({ courtCount: stats.total + 1 }).where(eq(runs.id, runId));
 
-    return { id: court.id, number: court.number, name: court.name, game: null, lastGame: null };
+    return {
+      id: court.id,
+      number: court.number,
+      name: court.name,
+      game: null,
+      lastGame: null,
+      fillProposal: null,
+    };
   });
 }
 
@@ -360,61 +379,108 @@ async function getLatestWinnersByCourt(
   return result;
 }
 
-export async function getFillProposal(runId: string, courtId: string): Promise<FillProposal> {
-  const [[run], [court]] = await Promise.all([
-    db.select().from(runs).where(eq(runs.id, runId)).limit(1),
-    db
-      .select({ id: courts.id })
-      .from(courts)
-      .where(and(eq(courts.id, courtId), eq(courts.runId, runId)))
-      .limit(1),
+const EMPTY_PROPOSAL: FillProposal = { sideA: [], sideB: [], needed: 4 };
+
+// Idle courts get disjoint proposals, allocated earliest-free first from a
+// shrinking pool; `nextUp` is the group drawn from whoever remains.
+async function allocateFillProposalsFor(
+  runId: string,
+  { run, courtRows, busyCourtIds }: AllocationContext,
+): Promise<{ proposals: Map<string, FillProposal>; nextUp: CourtPlayer[] }> {
+  const proposals = new Map<string, FillProposal>();
+  if (run.runMode === "score_only") return { proposals, nextUp: [] };
+
+  const idleIds = courtRows.filter((c) => !busyCourtIds.has(c.id)).map((c) => c.id);
+  const winnerStays = run.rotationStyle === "winner_stays";
+
+  const [eligible, lastEnded, winnersByCourt] = await Promise.all([
+    getEligiblePlayers(runId),
+    idleIds.length === 0
+      ? Promise.resolve([])
+      : db
+          .select({ courtId: games.courtId, endedAt: max(games.endedAt) })
+          .from(games)
+          .where(and(eq(games.status, "completed"), inArray(games.courtId, idleIds)))
+          .groupBy(games.courtId),
+    winnerStays ? getLatestWinnersByCourt(runId, idleIds) : Promise.resolve(new Map<string, string[]>()),
   ]);
-  if (!run) throw new RunNotFoundError();
-  if (!court) throw new CourtNotFoundError();
+  const partnerOf = await getPartnerMap(eligible.map((p) => p.entryId));
 
-  if (run.runMode === "score_only") return { sideA: [], sideB: [], needed: 4 };
+  const freedAt = new Map<string, number>();
+  for (const row of lastEnded) {
+    if (row.endedAt) freedAt.set(row.courtId, new Date(row.endedAt).getTime());
+  }
+  const order = courtRows
+    .filter((c) => !busyCourtIds.has(c.id))
+    .sort((a, b) => {
+      const ta = freedAt.get(a.id);
+      const tb = freedAt.get(b.id);
+      if (ta !== undefined && tb !== undefined && ta !== tb) return ta - tb;
+      if (ta !== undefined && tb === undefined) return -1;
+      if (ta === undefined && tb !== undefined) return 1;
+      return a.number - b.number;
+    });
 
-  const eligible = await getEligiblePlayers(runId);
-  let sideA: CourtPlayer[] = [];
   let pool = eligible;
+  for (let i = 0; i < order.length; i++) {
+    const courtId = order[i].id;
+    let courtPool = pool;
+    let sideA: CourtPlayer[] = [];
 
-  if (run.rotationStyle === "winner_stays") {
-    const [courtRows, busy] = await Promise.all([
-      db.select({ id: courts.id }).from(courts).where(eq(courts.runId, runId)),
-      db
-        .select({ courtId: games.courtId })
-        .from(games)
-        .where(and(eq(games.runId, runId), inArray(games.status, [...openGameStatuses]))),
-    ]);
-    const busyIds = new Set(busy.map((b) => b.courtId));
-    const idleOtherIds = courtRows.map((c) => c.id).filter((id) => id !== courtId && !busyIds.has(id));
-
-    const winnersByCourt = await getLatestWinnersByCourt(runId, [courtId, ...idleOtherIds]);
-
-    const reserved = new Set<string>();
-    for (const id of idleOtherIds) {
-      for (const entryId of winnersByCourt.get(id) ?? []) reserved.add(entryId);
+    if (winnerStays) {
+      const reserved = new Set<string>();
+      for (const later of order.slice(i + 1)) {
+        for (const entryId of winnersByCourt.get(later.id) ?? []) reserved.add(entryId);
+      }
+      const ownWinners = new Set(winnersByCourt.get(courtId) ?? []);
+      courtPool = pool.filter((p) => !reserved.has(p.entryId));
+      sideA = courtPool.filter((p) => ownWinners.has(p.entryId)).slice(0, 2);
+      const sideAIds = new Set(sideA.map((p) => p.entryId));
+      courtPool = courtPool.filter((p) => !sideAIds.has(p.entryId));
     }
 
-    const ownWinners = new Set(winnersByCourt.get(courtId) ?? []);
-    pool = eligible.filter((p) => !reserved.has(p.entryId));
-    sideA = pool.filter((p) => ownWinners.has(p.entryId)).slice(0, 2);
-    const sideAIds = new Set(sideA.map((p) => p.entryId));
-    pool = pool.filter((p) => !sideAIds.has(p.entryId));
+    const group = pickNextGroup(courtPool, partnerOf, 4 - sideA.length);
+    let sideB: CourtPlayer[];
+    if (sideA.length === 0) {
+      sideA = group.sideA;
+      sideB = group.sideB;
+    } else {
+      const rest = [...group.sideA, ...group.sideB];
+      const topUp = rest.slice(0, 2 - sideA.length);
+      sideA = [...sideA, ...topUp];
+      sideB = rest.slice(topUp.length);
+    }
+
+    proposals.set(courtId, { sideA, sideB, needed: 4 - (sideA.length + sideB.length) });
+    const placed = new Set([...sideA, ...sideB].map((p) => p.entryId));
+    pool = pool.filter((p) => !placed.has(p.entryId));
   }
 
-  const partnerOf = await getPartnerMap(pool.map((p) => p.entryId));
-  const group = pickNextGroup(pool, partnerOf, 4 - sideA.length);
-  let sideB: CourtPlayer[];
-  if (sideA.length === 0) {
-    sideA = group.sideA;
-    sideB = group.sideB;
-  } else {
-    const rest = [...group.sideA, ...group.sideB];
-    const topUp = rest.slice(0, 2 - sideA.length);
-    sideA = [...sideA, ...topUp];
-    sideB = rest.slice(topUp.length);
-  }
+  const next = pickNextGroup(pool, partnerOf);
+  return { proposals, nextUp: [...next.sideA, ...next.sideB] };
+}
 
-  return { sideA, sideB, needed: 4 - (sideA.length + sideB.length) };
+export async function getFillProposal(runId: string, courtId: string): Promise<FillProposal> {
+  const [[run], courtRows, busy] = await Promise.all([
+    db.select().from(runs).where(eq(runs.id, runId)).limit(1),
+    db
+      .select({ id: courts.id, number: courts.number })
+      .from(courts)
+      .where(eq(courts.runId, runId)),
+    db
+      .select({ courtId: games.courtId })
+      .from(games)
+      .where(and(eq(games.runId, runId), inArray(games.status, [...openGameStatuses]))),
+  ]);
+  if (!run) throw new RunNotFoundError();
+  if (!courtRows.some((c) => c.id === courtId)) throw new CourtNotFoundError();
+
+  if (run.runMode === "score_only") return { ...EMPTY_PROPOSAL };
+
+  const { proposals } = await allocateFillProposalsFor(runId, {
+    run,
+    courtRows,
+    busyCourtIds: new Set(busy.map((b) => b.courtId)),
+  });
+  return proposals.get(courtId) ?? { ...EMPTY_PROPOSAL };
 }
