@@ -9,12 +9,7 @@ export class ApiError extends Error {
 
 type Method = "GET" | "POST" | "PATCH" | "DELETE";
 
-async function request<T>(method: Method, url: string, body?: unknown): Promise<T> {
-  const res = await fetch(url, {
-    method,
-    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+async function unwrap<T>(res: Response): Promise<T> {
   const payload = (await res.json().catch(() => null)) as ApiResponse<T> | null;
   if (!payload || payload.ok === false) {
     if (payload && payload.ok === false) {
@@ -23,6 +18,15 @@ async function request<T>(method: Method, url: string, body?: unknown): Promise<
     throw new ApiError(`Request failed: ${res.status}`, "NETWORK");
   }
   return payload.data;
+}
+
+async function request<T>(method: Method, url: string, body?: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method,
+    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  return unwrap<T>(res);
 }
 
 export function apiGet<T>(url: string): Promise<T> {
@@ -39,4 +43,9 @@ export function apiPatch<T>(url: string, body?: unknown): Promise<T> {
 
 export function apiDelete<T>(url: string): Promise<T> {
   return request<T>("DELETE", url);
+}
+
+export async function apiPostForm<T>(url: string, formData: FormData): Promise<T> {
+  const res = await fetch(url, { method: "POST", body: formData });
+  return unwrap<T>(res);
 }

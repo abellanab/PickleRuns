@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { queueEntries, games, gamePlayers, courts } from "@/db/schema";
+import { queueEntries, games, gamePlayers, courts, users } from "@/db/schema";
 import { eq, and, ne, sql, inArray, asc } from "drizzle-orm";
 import type { QueueEntry } from "@/types/db";
 
@@ -36,6 +36,7 @@ export async function joinQueue(
 export type QueueEntryWithGames = QueueEntry & {
   gamesPlayed: number;
   courtNumber: number | null;
+  avatarUrl: string | null;
 };
 
 export async function getQueueForRun(
@@ -43,8 +44,9 @@ export async function getQueueForRun(
 ): Promise<{ onCourt: QueueEntryWithGames[]; waiting: QueueEntryWithGames[] }> {
   const [allEntries, rostered] = await Promise.all([
     db
-      .select()
+      .select({ entry: queueEntries, avatarUrl: users.avatarUrl })
       .from(queueEntries)
+      .leftJoin(users, eq(users.id, queueEntries.userId))
       .where(and(eq(queueEntries.runId, runId), ne(queueEntries.status, "removed")))
       .orderBy(asc(queueEntries.position)),
     db
@@ -67,7 +69,7 @@ export async function getQueueForRun(
 
   // Compute games played from completed games — the single source of truth for
   // this number (there is no stored counter).
-  const entryIds = allEntries.map((e) => e.id);
+  const entryIds = allEntries.map((e) => e.entry.id);
   const gamesPlayedMap = new Map<string, number>();
   if (entryIds.length > 0) {
     const counts = await db
@@ -90,10 +92,11 @@ export async function getQueueForRun(
     }
   }
 
-  const entries: QueueEntryWithGames[] = allEntries.map((entry) => ({
+  const entries: QueueEntryWithGames[] = allEntries.map(({ entry, avatarUrl }) => ({
     ...entry,
     gamesPlayed: gamesPlayedMap.get(entry.id) ?? 0,
     courtNumber: courtByEntryId.get(entry.id) ?? null,
+    avatarUrl,
   }));
 
   const onCourt = entries.filter((e) => courtByEntryId.has(e.id));

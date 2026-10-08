@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PlayerLiveView } from "@/components/ui/player-live-view";
 import { useAddQueueEntryMutation } from "@/hooks/use-queue";
+import { useProfile } from "@/hooks/use-profile";
 import { useRun } from "@/hooks/use-run";
 import { ApiError } from "@/lib/api/client";
 
@@ -87,7 +88,9 @@ interface JoinFormProps {
 
 export default function JoinForm({ runCode, runName, currentUser }: JoinFormProps) {
 
-  const [name, setName] = useState(currentUser?.displayName ?? "");
+  const { data: profile } = useProfile({ enabled: !!currentUser });
+  const [typedName, setTypedName] = useState<string | null>(null);
+  const name = typedName ?? profile?.displayName ?? currentUser?.displayName ?? "";
   const [error, setError] = useState("");
   const [entry, setEntry] = useState<{ id: string; displayName: string | null } | null>(null);
   const [storageChecked, setStorageChecked] = useState(false);
@@ -193,7 +196,7 @@ export default function JoinForm({ runCode, runName, currentUser }: JoinFormProp
             <input
               value={name}
               onChange={(e) => {
-                setName(e.target.value);
+                setTypedName(e.target.value);
                 setError("");
               }}
               autoFocus

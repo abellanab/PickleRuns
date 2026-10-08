@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { cn, deriveInitials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/ui/avatar";
 import JoinByCodeForm from "@/components/ui/JoinByCodeForm";
 import HostRequestSheet from "@/components/ui/HostRequestSheet";
 import { useRuns, useCloseRunMutation, type RunSummary } from "@/hooks/use-run";
 import { useHostStatus } from "@/hooks/use-host-request";
+import { useProfile } from "@/hooks/use-profile";
 import { signOut } from "@/app/(auth)/actions";
 import { Plus, ChevronRight, LogOut, User, Clock, Sparkles, Check } from "lucide-react";
 
@@ -88,7 +90,13 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
     }
   }
 
-  const initials = deriveInitials(initialUser.metadata, initialUser.email);
+  const { data: profile } = useProfile();
+  const metaDisplayName = initialUser.metadata?.displayName;
+  const avatarName =
+    profile?.displayName ||
+    (typeof metaDisplayName === "string" ? metaDisplayName : "") ||
+    initialUser.email;
+  const avatarUrl = profile?.avatarUrl ?? null;
   const email = initialUser.email;
   const visibleRuns: DashboardRun[] = mapRuns(runs);
 
@@ -138,8 +146,11 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
           </h1>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
-              <button className="mt-1 w-[38px] h-[38px] flex-shrink-0 rounded-full bg-bg-hover border border-border-accent flex items-center justify-center font-display text-[13px] font-extrabold tracking-[0.04em] text-accent outline-none focus-visible:ring-2 focus-visible:ring-accent/50 transition-colors hover:bg-bg-surface">
-                {initials}
+              <button
+                aria-label="Account menu"
+                className="mt-1 w-11 h-11 flex-shrink-0 rounded-full flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+              >
+                <Avatar name={avatarName} src={avatarUrl} size="md" />
               </button>
             </DropdownMenu.Trigger>
 
@@ -150,12 +161,17 @@ export default function DashboardClient({ initialUser }: DashboardClientProps) {
                 className="z-50 min-w-[200px] rounded-md border border-border bg-bg-surface shadow-lg outline-none animate-fade-up"
               >
                 <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-border">
-                  <div className="w-[30px] h-[30px] flex-shrink-0 rounded-full bg-bg-hover border border-border-accent flex items-center justify-center font-display text-[11px] font-extrabold tracking-[0.04em] text-accent">
-                    {initials}
+                  <Avatar name={avatarName} src={avatarUrl} size="sm" />
+                  <div className="flex min-w-0 flex-col">
+                    {profile?.displayName && (
+                      <span className="font-display text-[13px] font-bold tracking-[0.04em] uppercase text-text-primary truncate">
+                        {profile.displayName}
+                      </span>
+                    )}
+                    <span className="font-body text-[12px] font-medium text-text-muted truncate">
+                      {email}
+                    </span>
                   </div>
-                  <span className="font-body text-[12px] font-medium text-text-muted truncate">
-                    {email}
-                  </span>
                 </div>
 
                 {isPending && (

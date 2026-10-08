@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { runs, courts, games, gamePlayers, queueEntries, scoreEvents } from "@/db/schema";
+import { runs, courts, games, gamePlayers, queueEntries, scoreEvents, users } from "@/db/schema";
 import { eq, desc, inArray, and, sql, isNull } from "drizzle-orm";
 import { RunNotFoundError, isUniqueViolationOn } from "@/services/run.service";
 import { CourtNotFoundError, CourtOccupiedError, getEligiblePlayers } from "@/services/court.service";
@@ -194,6 +194,7 @@ export async function createGame(
 export type PlayerWithStats = {
   queueEntryId: string;
   displayName: string;
+  avatarUrl: string | null;
   team: "team_a" | "team_b";
   points: number;
 };
@@ -224,11 +225,13 @@ export async function getGameWithDetails(gameId: string): Promise<GameWithDetail
       .select({
         queueEntryId: gamePlayers.queueEntryId,
         displayName: queueEntries.displayName,
+        avatarUrl: users.avatarUrl,
         team: gamePlayers.team,
         points: sql<number>`COALESCE(SUM(${scoreEvents.points}), 0)`,
       })
       .from(gamePlayers)
       .innerJoin(queueEntries, eq(queueEntries.id, gamePlayers.queueEntryId))
+      .leftJoin(users, eq(users.id, queueEntries.userId))
       .leftJoin(
         scoreEvents,
         and(
@@ -238,7 +241,7 @@ export async function getGameWithDetails(gameId: string): Promise<GameWithDetail
         ),
       )
       .where(eq(gamePlayers.gameId, gameId))
-      .groupBy(gamePlayers.queueEntryId, queueEntries.displayName, gamePlayers.team)
+      .groupBy(gamePlayers.queueEntryId, queueEntries.displayName, users.avatarUrl, gamePlayers.team)
       // Sort at the SQL layer so the leader is always first. Tie-break by
       // displayName ASC for a stable order when two players finish on the
       // same points total.
@@ -268,6 +271,7 @@ export async function getGameWithDetails(gameId: string): Promise<GameWithDetail
     players: playerRows.map((r) => ({
       queueEntryId: r.queueEntryId,
       displayName: r.displayName,
+      avatarUrl: r.avatarUrl,
       team: r.team,
       points: Number(r.points),
     })),

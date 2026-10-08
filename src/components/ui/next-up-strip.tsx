@@ -1,3 +1,4 @@
+import { Avatar } from "@/components/ui/avatar";
 import type { CourtPlayer } from "@/hooks/use-courts";
 
 interface NextUpStripProps {
@@ -5,8 +6,20 @@ interface NextUpStripProps {
   waitingCount: number;
 }
 
-function pair(players: CourtPlayer[]) {
-  return players.map((p) => p.displayName).join(" + ");
+function Pair({ players }: { players: CourtPlayer[] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {players.map((p, i) => (
+        <span key={p.entryId} className="flex items-center gap-1.5 min-w-0">
+          {i > 0 && <span className="font-display text-[13px] text-text-muted">+</span>}
+          <Avatar name={p.displayName} src={p.avatarUrl} size="sm" />
+          <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary truncate">
+            {p.displayName}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export function NextUpStrip({ nextUp, waitingCount }: NextUpStripProps) {
@@ -24,22 +37,16 @@ export function NextUpStrip({ nextUp, waitingCount }: NextUpStripProps) {
         <span className="font-body text-[13px] text-text-muted">Nobody waiting</span>
       ) : needed > 0 ? (
         <>
-          <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary">
-            {pair(nextUp)}
-          </span>
+          <Pair players={nextUp} />
           <span className="font-display text-[12px] font-bold text-warning">Need {needed} more</span>
         </>
       ) : (
         <div className="flex flex-col gap-0.5">
-          <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary">
-            {pair(sideA)}
-          </span>
+          <Pair players={sideA} />
           <span className="font-display text-[10px] font-bold tracking-[0.14em] uppercase text-text-muted">
             vs
           </span>
-          <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary">
-            {pair(sideB)}
-          </span>
+          <Pair players={sideB} />
         </div>
       )}
       {more > 0 && (

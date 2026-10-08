@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { CourtLastGame, CourtPlayer, CourtState, FillProposal } from "@/hooks/use-courts";
 import type { RunWire } from "@/types/api";
@@ -98,7 +99,7 @@ export function CourtCard({
         {game ? (
           <>
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-              <SideBlock label="Side A" players={game.sideA.map((p) => p.displayName)} />
+              <SideBlock label="Side A" players={game.sideA} />
               <div className="flex flex-col items-center gap-1">
                 {showScore ? (
                   <>
@@ -111,7 +112,7 @@ export function CourtCard({
                   <span className={labelClass}>In play</span>
                 )}
               </div>
-              <SideBlock label="Side B" players={game.sideB.map((p) => p.displayName)} align="right" />
+              <SideBlock label="Side B" players={game.sideB} align="right" />
             </div>
 
             {canTapScore && !askWinner && (
@@ -264,9 +265,17 @@ function RosterRow({ label, players }: { label: string; players: CourtPlayer[] }
     <div className="flex items-baseline gap-2 min-w-0">
       <span className={`${labelClass} min-w-[52px] flex-shrink-0`}>{label}</span>
       {players.length > 0 ? (
-        <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary truncate">
-          {names(players)}
-        </span>
+        <div className="flex items-center gap-x-2 min-w-0">
+          {players.map((p, i) => (
+            <span key={p.entryId} className="flex items-center gap-1.5 min-w-0">
+              {i > 0 && <span className="font-display text-[13px] text-text-muted">+</span>}
+              <Avatar name={p.displayName} src={p.avatarUrl} size="sm" />
+              <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary truncate">
+                {p.displayName}
+              </span>
+            </span>
+          ))}
+        </div>
       ) : (
         <span className="font-body text-[13px] text-text-muted">—</span>
       )}
@@ -374,7 +383,10 @@ function ScoreColumn({
           aria-label={`Score a point for ${p.displayName}`}
           className="min-h-[48px] w-full rounded-md border border-border bg-bg-hover px-3 flex items-center justify-between gap-2 font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary select-none touch-manipulation motion-safe:transition motion-safe:duration-150 active:scale-[0.97] active:brightness-125 active:ring-2 active:ring-accent"
         >
-          <span className="truncate">{p.displayName}</span>
+          <span className="flex items-center gap-2 min-w-0">
+            <Avatar name={p.displayName} src={p.avatarUrl} size="sm" />
+            <span className="truncate">{p.displayName}</span>
+          </span>
           <span className="text-[11px] text-accent flex-shrink-0">+1</span>
         </button>
       ))}
@@ -388,7 +400,7 @@ function SideBlock({
   align = "left",
 }: {
   label: string;
-  players: string[];
+  players: CourtPlayer[];
   align?: "left" | "right";
 }) {
   return (
@@ -396,12 +408,15 @@ function SideBlock({
       <span className="font-display text-[10px] font-bold tracking-[0.14em] uppercase text-text-muted">
         {label}
       </span>
-      {players.map((name, i) => (
+      {players.map((p) => (
         <span
-          key={i}
-          className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary truncate max-w-full"
+          key={p.entryId}
+          className={`flex items-center gap-1.5 min-w-0 max-w-full ${align === "right" ? "justify-end" : ""}`}
         >
-          {name}
+          <Avatar name={p.displayName} src={p.avatarUrl} size="sm" />
+          <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary truncate">
+            {p.displayName}
+          </span>
         </span>
       ))}
     </div>

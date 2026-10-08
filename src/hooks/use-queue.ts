@@ -6,6 +6,7 @@ import { apiGet, apiPost, apiPatch } from "@/lib/api/client";
 export type QueueEntry = {
   id: string;
   displayName: string;
+  avatarUrl: string | null;
   status: "waiting" | "marked_out" | "removed";
   paid: boolean;
   gamesPlayed: number;
