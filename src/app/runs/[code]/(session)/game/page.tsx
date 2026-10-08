@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { RotateCcw } from "lucide-react";
@@ -16,6 +16,7 @@ import {
   useUndoScoreMutation,
   type PlayerData,
 } from "@/hooks/use-game";
+import { useCourts } from "@/hooks/use-courts";
 import { useRun } from "@/hooks/use-run";
 import { useSessionUser } from "@/hooks/use-session";
 
@@ -26,7 +27,9 @@ const SIDE_LABEL: Record<Side, string> = { team_a: "Side A", team_b: "Side B" };
 export default function GamePage() {
   const { code } = useParams<{ code: string }>();
   const router = useRouter();
-  const gameIdOverride = useSearchParams().get("gameId");
+  const searchParams = useSearchParams();
+  const gameIdOverride = searchParams.get("gameId");
+  const fromLobby = searchParams.get("from") === "lobby";
 
   const runQuery = useRun(code);
   const gamesQuery = useGames(code);
@@ -66,6 +69,21 @@ export default function GamePage() {
     if (isQueueOnly) router.replace(`/runs/${code}/lobby`);
   }, [isQueueOnly, code, router]);
 
+  const courts = useCourts(code).data?.courts ?? [];
+  const pillsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    pillsRef.current
+      ?.querySelector<HTMLElement>('[data-active="true"]')
+      ?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [currentGameId, courts.length]);
+
+  function openCourtGame(gameId: string) {
+    const params = new URLSearchParams({ gameId });
+    if (fromLobby) params.set("from", "lobby");
+    router.replace(`/runs/${code}/game?${params.toString()}`);
+  }
+
   const loading =
     runQuery.isPending ||
     gamesQuery.isPending ||
@@ -73,8 +91,9 @@ export default function GamePage() {
     (!!currentGameId && detailsQuery.isPending);
 
   const isHost = !!userId && !!run && userId === run.hostId;
-  const homeHref = isHost ? `/runs/${code}/lobby` : `/runs/${code}/join`;
-  const homeLabel = isHost ? "Back to lobby" : "Back to my status";
+  const toLobby = isHost || fromLobby;
+  const homeHref = toLobby ? `/runs/${code}/lobby` : `/runs/${code}/join`;
+  const homeLabel = toLobby ? "Back to lobby" : "Back to my status";
   const game = details?.game ?? null;
   const isCompleted = game?.status === "completed";
   const canScore = isHost && !!game && !isCompleted;
@@ -131,6 +150,7 @@ export default function GamePage() {
     );
   }
 
+  const currentCourt = courts.find((c) => c.game?.id === game.id) ?? null;
   const isLevel = game.scoreA === game.scoreB;
   const leader: Side = game.scoreA > game.scoreB ? "team_a" : "team_b";
   const winByTwo = run?.winByTwo ?? false;
@@ -150,10 +170,56 @@ export default function GamePage() {
         backHref={homeHref}
         badge={
           <span className="font-display text-[12px] font-bold tracking-[0.1em] uppercase text-accent bg-accent-glow border border-border-accent px-2.5 py-1 rounded-[4px]">
-            Game {game.gameNumber}
+            {currentCourt ? `Court ${currentCourt.number} · Game ${game.gameNumber}` : `Game ${game.gameNumber}`}
           </span>
         }
       />
+
+      {courts.length > 1 && (
+        <div
+          ref={pillsRef}
+          className="flex gap-2 overflow-x-auto snap-x px-5 py-2 flex-shrink-0 custom-scrollbar"
+        >
+          {courts.map((court) => {
+            const live = court.game;
+            const active = !!live && live.id === game.id;
+            const base =
+              "snap-center flex-shrink-0 min-h-[44px] px-4 rounded-md border flex items-center gap-2 font-display text-[12px] font-extrabold tracking-[0.08em] uppercase whitespace-nowrap";
+            const label = court.name ?? `Court ${court.number}`;
+            if (!live) {
+              return (
+                <span
+                  key={court.id}
+                  aria-disabled="true"
+                  className={`${base} border-border bg-bg-surface text-text-muted opacity-60`}
+                >
+                  {label}
+                  <span className="text-[10px] font-semibold">Open</span>
+                </span>
+              );
+            }
+            return (
+              <button
+                key={court.id}
+                type="button"
+                data-active={active}
+                aria-current={active ? "true" : undefined}
+                onClick={() => openCourtGame(live.id)}
+                className={`${base} active:scale-[0.97] ${
+                  active
+                    ? "border-border-accent bg-accent-glow text-accent"
+                    : "border-border bg-bg-surface text-text-secondary"
+                }`}
+              >
+                {label}
+                <span className="text-[11px] tabular-nums">
+                  {live.scoreA}–{live.scoreB}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
         <div className="px-5 mt-1">
