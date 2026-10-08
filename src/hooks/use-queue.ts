@@ -1,7 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, apiPatch } from "@/lib/api/client";
+import { ApiError, apiGet, apiPost, apiPatch } from "@/lib/api/client";
+import { useProfile } from "@/hooks/use-profile";
 
 export type QueueEntry = {
   id: string;
@@ -11,6 +12,7 @@ export type QueueEntry = {
   paid: boolean;
   gamesPlayed: number;
   courtNumber: number | null;
+  isHost: boolean;
 };
 
 export type QueueData = {
@@ -88,4 +90,48 @@ export function useAddQueueEntryMutation(
       queryClient.invalidateQueries({ queryKey: ["queue", code] });
     },
   });
+}
+
+export function useJoinAsHostMutation(code: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (displayName: string) =>
+      apiPost<{ id: string; position: number }>(`/api/runs/${code}/queue`, {
+        displayName,
+        mode: "host_self",
+      }),
+    onSuccess: (data) => {
+      try {
+        localStorage.setItem(`pickleruns:entry:${code}`, data.id);
+      } catch {
+        // storage unavailable; the entry is still in the rotation
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["queue", code] });
+      queryClient.invalidateQueries({ queryKey: ["courts", code] });
+    },
+  });
+}
+
+export function useHostJoinAsPlayer(code: string, isHost: boolean) {
+  const queueQuery = useQueue(code);
+  const profileQuery = useProfile({ enabled: isHost });
+  const mutation = useJoinAsHostMutation(code);
+
+  const queue = queueQuery.data;
+  const alreadyIn = !!queue && [...queue.onCourt, ...queue.waiting].some((e) => e.isHost);
+  const displayName = profileQuery.data?.displayName?.trim() || null;
+  const alreadyInQueueError =
+    mutation.error instanceof ApiError && mutation.error.code === "ALREADY_IN_QUEUE";
+
+  return {
+    visible: isHost && !!queue && !alreadyIn,
+    displayName,
+    pending: mutation.isPending,
+    error: mutation.isError && !alreadyInQueueError ? mutation.error.message : null,
+    join: () => {
+      if (displayName) mutation.mutate(displayName);
+    },
+  };
 }

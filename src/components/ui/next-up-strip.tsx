@@ -1,4 +1,5 @@
 import { Avatar } from "@/components/ui/avatar";
+import { HostTag } from "@/components/ui/host-tag";
 import type { CourtPlayer } from "@/hooks/use-courts";
 
 interface NextUpStripProps {
@@ -12,10 +13,11 @@ function Pair({ players }: { players: CourtPlayer[] }) {
       {players.map((p, i) => (
         <span key={p.entryId} className="flex items-center gap-1.5 min-w-0">
           {i > 0 && <span className="font-display text-[13px] text-text-muted">+</span>}
-          <Avatar name={p.displayName} src={p.avatarUrl} size="sm" />
+          <Avatar name={p.displayName} src={p.avatarUrl} size="sm" host={p.isHost} />
           <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary truncate">
             {p.displayName}
           </span>
+          {p.isHost && <HostTag />}
         </span>
       ))}
     </div>

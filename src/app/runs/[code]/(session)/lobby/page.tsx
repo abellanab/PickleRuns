@@ -22,7 +22,7 @@ import {
   type CourtState,
 } from "@/hooks/use-courts";
 import { useEndGameMutation, useGames, useStartMatchMutation } from "@/hooks/use-game";
-import { useQueue } from "@/hooks/use-queue";
+import { useHostJoinAsPlayer, useQueue } from "@/hooks/use-queue";
 import { useRun, useRunStats } from "@/hooks/use-run";
 import { useSessionUser } from "@/hooks/use-session";
 import type { RunWire } from "@/types/api";
@@ -72,6 +72,8 @@ export default function LobbyPage() {
   const hasLiveGame = courts.some((c) => c.game !== null);
   const waitingCount = queueQuery.data?.waiting.filter((e) => e.status === "waiting").length ?? 0;
 
+  const hostJoin = useHostJoinAsPlayer(code, canManageRun);
+
   useRunRealtime(run?.id ?? null, code);
 
   return (
@@ -106,6 +108,30 @@ export default function LobbyPage() {
         {!loading && run && run.status !== "completed" && isQueueMode && (
           <div className="px-5 mt-3">
             <PlayerStatusBanner entryId={entryId} queue={queueQuery.data} courts={courts} />
+          </div>
+        )}
+
+        {!loading && run && canManageRun && hostJoin.visible && (
+          <div className="mx-5 mt-3 rounded-md border border-border bg-bg-surface px-4 py-3 flex flex-col gap-2.5">
+            <span className="font-display text-[13px] font-bold text-text-secondary">
+              You&apos;re not in the rotation
+            </span>
+            <Button
+              variant="secondary"
+              onClick={hostJoin.join}
+              disabled={hostJoin.pending || !hostJoin.displayName}
+              className="w-full min-h-[44px]"
+            >
+              {hostJoin.pending ? "Joining…" : "Join as player"}
+            </Button>
+            {!hostJoin.displayName && (
+              <p className="font-body text-[12px] text-text-muted">
+                Set your name in Account to join the rotation.
+              </p>
+            )}
+            {hostJoin.error && (
+              <p className="font-display text-[12px] font-bold text-warning">{hostJoin.error}</p>
+            )}
           </div>
         )}
 

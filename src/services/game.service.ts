@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { runs, courts, games, gamePlayers, queueEntries, scoreEvents, users } from "@/db/schema";
 import { eq, desc, inArray, and, sql, isNull } from "drizzle-orm";
 import { RunNotFoundError, isUniqueViolationOn } from "@/services/run.service";
+import { isHostEntry } from "@/services/queue.service";
 import { CourtNotFoundError, CourtOccupiedError, getEligiblePlayers } from "@/services/court.service";
 import type { Game, ScoreEvent } from "@/types/db";
 
@@ -195,6 +196,7 @@ export type PlayerWithStats = {
   queueEntryId: string;
   displayName: string;
   avatarUrl: string | null;
+  isHost: boolean;
   team: "team_a" | "team_b";
   points: number;
 };
@@ -226,12 +228,14 @@ export async function getGameWithDetails(gameId: string): Promise<GameWithDetail
         queueEntryId: gamePlayers.queueEntryId,
         displayName: queueEntries.displayName,
         avatarUrl: users.avatarUrl,
+        isHost: isHostEntry,
         team: gamePlayers.team,
         points: sql<number>`COALESCE(SUM(${scoreEvents.points}), 0)`,
       })
       .from(gamePlayers)
       .innerJoin(queueEntries, eq(queueEntries.id, gamePlayers.queueEntryId))
       .leftJoin(users, eq(users.id, queueEntries.userId))
+      .innerJoin(runs, eq(runs.id, queueEntries.runId))
       .leftJoin(
         scoreEvents,
         and(
@@ -241,7 +245,7 @@ export async function getGameWithDetails(gameId: string): Promise<GameWithDetail
         ),
       )
       .where(eq(gamePlayers.gameId, gameId))
-      .groupBy(gamePlayers.queueEntryId, queueEntries.displayName, users.avatarUrl, gamePlayers.team)
+      .groupBy(gamePlayers.queueEntryId, queueEntries.displayName, users.avatarUrl, queueEntries.userId, runs.hostId, gamePlayers.team)
       // Sort at the SQL layer so the leader is always first. Tie-break by
       // displayName ASC for a stable order when two players finish on the
       // same points total.
@@ -272,6 +276,7 @@ export async function getGameWithDetails(gameId: string): Promise<GameWithDetail
       queueEntryId: r.queueEntryId,
       displayName: r.displayName,
       avatarUrl: r.avatarUrl,
+      isHost: r.isHost,
       team: r.team,
       points: Number(r.points),
     })),

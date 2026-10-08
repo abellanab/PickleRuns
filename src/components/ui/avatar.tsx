@@ -9,6 +9,7 @@ interface AvatarProps {
   name: string;
   src?: string | null;
   size?: AvatarSize;
+  host?: boolean;
   className?: string;
 }
 
@@ -18,7 +19,7 @@ const SIZE_CLASS: Record<AvatarSize, string> = {
   lg: "w-24 h-24 text-[32px]",
 };
 
-export function Avatar({ name, src, size = "md", className }: AvatarProps) {
+export function Avatar({ name, src, size = "md", host = false, className }: AvatarProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const showImage = !!src && src !== failedSrc;
 
@@ -27,6 +28,7 @@ export function Avatar({ name, src, size = "md", className }: AvatarProps) {
       className={cn(
         "flex-shrink-0 rounded-full overflow-hidden inline-flex items-center justify-center",
         SIZE_CLASS[size],
+        host && "ring-2 ring-accent ring-offset-1 ring-offset-bg-surface",
         !showImage &&
           "bg-bg-hover border border-border-accent text-accent font-display font-extrabold tracking-[0.04em]",
         className,

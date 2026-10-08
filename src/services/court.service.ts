@@ -3,6 +3,7 @@ import { runs, courts, games, gamePlayers, queueEntries, users } from "@/db/sche
 import { and, asc, count, desc, eq, inArray, max, notExists, sql } from "drizzle-orm";
 import { RunNotFoundError } from "@/services/run.service";
 import { pickNextGroup } from "@/lib/queue-pairs";
+import { isHostEntry } from "@/services/queue.service";
 
 const MAX_COURTS = 8;
 
@@ -41,7 +42,12 @@ export class CourtHasHistoryError extends Error {
   }
 }
 
-export type CourtPlayer = { entryId: string; displayName: string; avatarUrl: string | null };
+export type CourtPlayer = {
+  entryId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isHost: boolean;
+};
 export type CourtGame = {
   id: string;
   gameNumber: number;
@@ -90,9 +96,11 @@ export async function getEligiblePlayers(runId: string, executor: Executor = db)
       entryId: queueEntries.id,
       displayName: queueEntries.displayName,
       avatarUrl: users.avatarUrl,
+      isHost: isHostEntry,
     })
     .from(queueEntries)
     .leftJoin(users, eq(users.id, queueEntries.userId))
+    .innerJoin(runs, eq(runs.id, queueEntries.runId))
     .where(
       and(
         eq(queueEntries.runId, runId),
@@ -170,11 +178,13 @@ export async function getCourtsOverview(runId: string): Promise<CourtsOverview> 
             entryId: queueEntries.id,
             displayName: queueEntries.displayName,
             avatarUrl: users.avatarUrl,
+      isHost: isHostEntry,
             position: queueEntries.position,
           })
           .from(gamePlayers)
           .innerJoin(queueEntries, eq(queueEntries.id, gamePlayers.queueEntryId))
           .leftJoin(users, eq(users.id, queueEntries.userId))
+    .innerJoin(runs, eq(runs.id, queueEntries.runId))
           .where(inArray(gamePlayers.gameId, openGames.map((g) => g.id)))
           .orderBy(asc(queueEntries.position));
 
@@ -198,10 +208,12 @@ export async function getCourtsOverview(runId: string): Promise<CourtsOverview> 
         entryId: queueEntries.id,
         displayName: queueEntries.displayName,
         avatarUrl: users.avatarUrl,
+      isHost: isHostEntry,
       })
       .from(gamePlayers)
       .innerJoin(queueEntries, eq(queueEntries.id, gamePlayers.queueEntryId))
       .leftJoin(users, eq(users.id, queueEntries.userId))
+    .innerJoin(runs, eq(runs.id, queueEntries.runId))
       .where(inArray(gamePlayers.gameId, lastGames.map((g) => g.id)))
       .orderBy(asc(queueEntries.position));
     return { lastGames, lastRosterRows };
@@ -224,7 +236,7 @@ export async function getCourtsOverview(runId: string): Promise<CourtsOverview> 
     const side = (team: "team_a" | "team_b"): CourtPlayer[] =>
       lastRosterRows
         .filter((r) => r.gameId === last.id && r.team === team)
-        .map((r) => ({ entryId: r.entryId, displayName: r.displayName, avatarUrl: r.avatarUrl }));
+        .map((r) => ({ entryId: r.entryId, displayName: r.displayName, avatarUrl: r.avatarUrl, isHost: r.isHost }));
     return {
       id: last.id,
       gameNumber: last.gameNumber,
@@ -252,7 +264,7 @@ export async function getCourtsOverview(runId: string): Promise<CourtsOverview> 
     const toSide = (team: "team_a" | "team_b"): CourtPlayer[] =>
       rosterRows
         .filter((r) => r.gameId === game.id && r.team === team)
-        .map((r) => ({ entryId: r.entryId, displayName: r.displayName, avatarUrl: r.avatarUrl }));
+        .map((r) => ({ entryId: r.entryId, displayName: r.displayName, avatarUrl: r.avatarUrl, isHost: r.isHost }));
     return {
       id: court.id,
       number: court.number,

@@ -11,6 +11,7 @@ import { useRun } from "@/hooks/use-run";
 import { useRunRealtime } from "@/hooks/use-run-realtime";
 import { useSessionUser } from "@/hooks/use-session";
 import { Avatar } from "@/components/ui/avatar";
+import { HostTag } from "@/components/ui/host-tag";
 import { PaymentQrCard } from "@/components/ui/payment-qr-card";
 import { LiveScoreRow } from "@/components/ui/live-score-row";
 import { getQueueNumber } from "@/components/ui/player-status-banner";
@@ -85,6 +86,7 @@ export function PlayerLiveView({
   const showScores = run.runMode !== "queue_only";
   const showQueue = run.runMode !== "score_only";
   const isHost = !!sessionQuery.data && sessionQuery.data === run.hostId;
+  const myEntry = myCourtEntry ?? myWaiting;
   const name = displayName ?? myCourtEntry?.displayName ?? myWaiting?.displayName ?? null;
 
   let waitingNumber = 0;
@@ -119,6 +121,7 @@ export function PlayerLiveView({
           <span className="font-display text-[13px] font-black tracking-[0.08em] uppercase text-text-primary">
             {name}
           </span>
+          {myEntry?.isHost && <HostTag />}
         </div>
       )}
 
@@ -166,10 +169,11 @@ export function PlayerLiveView({
                       #{waitingNumber}
                     </span>
                   )}
-                  <Avatar name={e.displayName} src={e.avatarUrl} size="sm" />
+                  <Avatar name={e.displayName} src={e.avatarUrl} size="sm" host={e.isHost} />
                   <span className="min-w-0 flex-1 font-display text-[14px] font-black tracking-[0.03em] uppercase text-text-primary truncate">
                     {e.displayName}
                   </span>
+                  {e.isHost && <HostTag />}
                   {isMarkedOut && (
                     <span className="font-display text-[10px] font-bold tracking-[0.12em] uppercase text-text-muted">
                       Marked out

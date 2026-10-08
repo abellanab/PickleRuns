@@ -19,6 +19,7 @@ export type PlayerData = {
   queueEntryId: string;
   displayName: string;
   avatarUrl: string | null;
+  isHost: boolean;
   team: "team_a" | "team_b";
   points: number;
 };
