@@ -1,4 +1,4 @@
-export type Candidate = { entryId: string; displayName: string };
+export type Candidate = { entryId: string; displayName: string; avatarUrl: string | null };
 
 type Unit = { members: Candidate[] };
 

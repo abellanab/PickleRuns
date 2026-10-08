@@ -18,6 +18,7 @@ export type GameData = {
 export type PlayerData = {
   queueEntryId: string;
   displayName: string;
+  avatarUrl: string | null;
   team: "team_a" | "team_b";
   points: number;
 };

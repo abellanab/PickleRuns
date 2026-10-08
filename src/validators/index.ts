@@ -28,6 +28,11 @@ export {
 } from "./host-request.validator";
 
 export {
+  updateProfileSchema,
+  type UpdateProfileInput,
+} from "./profile.validator";
+
+export {
   inviteTokenSchema,
   type InviteTokenInput,
 } from "./invite.validator";

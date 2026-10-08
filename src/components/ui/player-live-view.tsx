@@ -8,6 +8,7 @@ import { useCourts, type CourtGame } from "@/hooks/use-courts";
 import { useQueue } from "@/hooks/use-queue";
 import { useRun } from "@/hooks/use-run";
 import { useRunRealtime } from "@/hooks/use-run-realtime";
+import { Avatar } from "@/components/ui/avatar";
 import { LiveScoreRow } from "@/components/ui/live-score-row";
 import { getQueueNumber } from "@/components/ui/player-status-banner";
 
@@ -159,6 +160,7 @@ export function PlayerLiveView({
                       #{waitingNumber}
                     </span>
                   )}
+                  <Avatar name={e.displayName} src={e.avatarUrl} size="sm" />
                   <span className="min-w-0 flex-1 font-display text-[14px] font-black tracking-[0.03em] uppercase text-text-primary truncate">
                     {e.displayName}
                   </span>

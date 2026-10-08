@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar } from "@/components/ui/avatar";
 import type { CourtGame, CourtPlayer } from "@/hooks/use-courts";
 
 interface LiveScoreRowProps {
@@ -7,8 +8,6 @@ interface LiveScoreRowProps {
   href: string;
   showScores: boolean;
 }
-
-const names = (players: CourtPlayer[]) => players.map((p) => p.displayName).join(" + ");
 
 export function LiveScoreRow({ courtNumber, game, href, showScores }: LiveScoreRowProps) {
   return (
@@ -38,13 +37,21 @@ function SideLine({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <div className="min-w-0 flex items-baseline gap-2">
+      <div className="min-w-0 flex items-center gap-2">
         <span className="font-display text-[10px] font-bold tracking-[0.12em] uppercase text-text-muted flex-shrink-0">
           {label}
         </span>
-        <span className="font-display text-[14px] font-black tracking-[0.03em] uppercase text-text-primary truncate">
-          {names(players)}
-        </span>
+        <div className="flex items-center gap-x-2 min-w-0">
+          {players.map((p, i) => (
+            <span key={p.entryId} className="flex items-center gap-1.5 min-w-0">
+              {i > 0 && <span className="font-display text-[14px] text-text-muted">+</span>}
+              <Avatar name={p.displayName} src={p.avatarUrl} size="sm" />
+              <span className="font-display text-[14px] font-black tracking-[0.03em] uppercase text-text-primary truncate">
+                {p.displayName}
+              </span>
+            </span>
+          ))}
+        </div>
       </div>
       {score !== null && (
         <span className="font-display text-[22px] font-black leading-none text-accent tabular-nums flex-shrink-0">

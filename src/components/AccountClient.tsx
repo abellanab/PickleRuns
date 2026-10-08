@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, Check } from "lucide-react";
-import { deriveInitials } from "@/lib/utils";
+import { Avatar } from "@/components/ui/avatar";
 import { Topbar } from "@/components/ui/topbar";
 import HostRequestSheet from "@/components/ui/HostRequestSheet";
 import { useHostStatus } from "@/hooks/use-host-request";
+import {
+  useProfile,
+  useRemoveAvatarMutation,
+  useUpdateProfileMutation,
+  useUploadAvatarMutation,
+} from "@/hooks/use-profile";
+import { cropToSquareWebp } from "@/lib/image";
 import { signOut } from "@/app/(auth)/actions";
 
 type InitialUser = {
@@ -22,14 +29,72 @@ export type AccountClientProps = {
 const LABEL_CLASS =
   "font-display text-[11px] font-bold tracking-[0.14em] uppercase text-text-muted";
 
+const SECONDARY_BUTTON_CLASS =
+  "h-11 px-4 flex items-center justify-center rounded-md border border-border bg-bg-surface text-text-secondary font-display text-[13px] font-bold tracking-[0.08em] uppercase transition-colors active:bg-bg-hover disabled:opacity-50";
+
 export default function AccountClient({ initialUser }: AccountClientProps) {
   const router = useRouter();
   const [showSheet, setShowSheet] = useState(false);
   const { data: hostStatus, isError, refetch } = useHostStatus();
+  const { data: profile } = useProfile();
 
-  const initials = deriveInitials(initialUser.metadata, initialUser.email);
   const metaName = initialUser.metadata?.displayName;
-  const displayName = typeof metaName === "string" ? metaName : "";
+  const fallbackName = typeof metaName === "string" ? metaName : "";
+  const displayName = profile?.displayName ?? fallbackName;
+  const avatarUrl = profile?.avatarUrl ?? null;
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [cropping, setCropping] = useState(false);
+  const uploadAvatar = useUploadAvatarMutation();
+  const removeAvatar = useRemoveAvatarMutation();
+  const photoBusy = cropping || uploadAvatar.isPending || removeAvatar.isPending;
+
+  const [draftName, setDraftName] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const updateProfile = useUpdateProfileMutation();
+  const nameValue = draftName ?? displayName;
+  const trimmedName = nameValue.trim();
+  const canSave =
+    trimmedName.length > 0 && trimmedName !== displayName && !updateProfile.isPending;
+
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError(null);
+    setCropping(true);
+    try {
+      const image = await cropToSquareWebp(file);
+      await uploadAvatar.mutateAsync(image);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Could not upload that photo.");
+    } finally {
+      setCropping(false);
+    }
+  }
+
+  function handleRemovePhoto() {
+    setPhotoError(null);
+    removeAvatar.mutate(undefined, {
+      onError: (err) => setPhotoError(err.message),
+    });
+  }
+
+  function handleSaveName(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!canSave) return;
+    setSaved(false);
+    updateProfile.mutate(
+      { displayName: trimmedName },
+      {
+        onSuccess: () => {
+          setDraftName(null);
+          setSaved(true);
+        },
+      },
+    );
+  }
 
   const isPending = hostStatus === "pending";
   const isApproved = hostStatus === "approved";
@@ -41,9 +106,7 @@ export default function AccountClient({ initialUser }: AccountClientProps) {
 
       <div className="flex flex-col gap-6 px-5 pt-6 pb-10">
         <div className="flex items-center gap-4 animate-fade-up">
-          <div className="w-16 h-16 flex-shrink-0 rounded-full bg-bg-hover border border-border-accent flex items-center justify-center font-display text-[22px] font-extrabold tracking-[0.04em] text-accent">
-            {initials}
-          </div>
+          <Avatar name={displayName || initialUser.email} src={avatarUrl} size="md" />
           <div className="flex min-w-0 flex-col gap-1">
             {displayName && (
               <span className="font-display text-[20px] font-extrabold tracking-[0.02em] uppercase text-text-primary leading-none truncate">
@@ -53,6 +116,82 @@ export default function AccountClient({ initialUser }: AccountClientProps) {
             <span className="font-body text-[13px] text-text-muted truncate">
               {initialUser.email}
             </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2.5 animate-fade-up" style={{ animationDelay: "0.04s" }}>
+          <span className={LABEL_CLASS}>Profile</span>
+          <div className="flex flex-col gap-5 px-[18px] py-4 rounded-md border border-border bg-bg-surface">
+            <div className="flex items-center gap-4">
+              <Avatar name={displayName || initialUser.email} src={avatarUrl} size="lg" />
+              <div className="flex min-w-0 flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={photoBusy}
+                  className={SECONDARY_BUTTON_CLASS}
+                >
+                  {cropping || uploadAvatar.isPending ? "Uploading…" : "Change photo"}
+                </button>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    disabled={photoBusy}
+                    className="h-11 px-4 flex items-center justify-center font-display text-[13px] font-bold tracking-[0.08em] uppercase text-[#ff6060] disabled:opacity-50"
+                  >
+                    {removeAvatar.isPending ? "Removing…" : "Remove photo"}
+                  </button>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </div>
+            {photoError && (
+              <span role="alert" className="font-body text-[13px] text-[#ff6060]">
+                {photoError}
+              </span>
+            )}
+
+            <form onSubmit={handleSaveName} className="flex flex-col gap-2">
+              <label htmlFor="profile-name" className={LABEL_CLASS}>
+                Name
+              </label>
+              <input
+                id="profile-name"
+                type="text"
+                value={nameValue}
+                onChange={(e) => {
+                  setDraftName(e.target.value);
+                  setSaved(false);
+                }}
+                maxLength={50}
+                autoComplete="name"
+                className="w-full h-12 px-3.5 rounded-md border border-border bg-bg-surface font-body text-[15px] text-text-primary outline-none focus:border-border-accent focus:bg-bg-hover"
+              />
+              <button
+                type="submit"
+                disabled={!canSave}
+                className="w-full h-12 flex items-center justify-center rounded-md bg-accent text-bg font-display text-[15px] font-extrabold tracking-[0.1em] uppercase transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100"
+              >
+                {updateProfile.isPending ? "Saving…" : "Save"}
+              </button>
+              {updateProfile.isError && (
+                <span role="alert" className="font-body text-[13px] text-[#ff6060]">
+                  {updateProfile.error.message}
+                </span>
+              )}
+              {saved && !updateProfile.isError && (
+                <span role="status" className="font-body text-[13px] text-accent">
+                  Saved
+                </span>
+              )}
+            </form>
           </div>
         </div>
 
