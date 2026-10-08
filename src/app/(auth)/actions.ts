@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function signIn(
@@ -47,6 +48,33 @@ export async function signUp(
   }
 
   redirect(intent === "host" ? "/dashboard?intent=host" : "/dashboard");
+}
+
+export async function signInWithGoogle(formData: FormData): Promise<void> {
+  const rawNext = (formData.get("next") as string | null) ?? "";
+  const intent = formData.get("intent") as string | null;
+
+  let next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
+  if (intent === "host" && next === "/dashboard") next = "/dashboard?intent=host";
+
+  const headerList = await headers();
+  const forwardedHost = headerList.get("x-forwarded-host") ?? headerList.get("host");
+  const origin =
+    headerList.get("origin") ??
+    (forwardedHost ? `${headerList.get("x-forwarded-proto") ?? "https"}://${forwardedHost}` : "");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/api/auth/callback?next=${encodeURIComponent(next)}`,
+      queryParams: { prompt: "select_account" },
+    },
+  });
+
+  if (error || !data.url) redirect("/login?error=oauth_start_failed");
+
+  redirect(data.url);
 }
 
 export async function signOut(): Promise<void> {

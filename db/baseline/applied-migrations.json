@@ -27,5 +27,6 @@
   "1791374150680_pickleball-rotation-trigger",
   "1791376570774_rotation-winners-first",
   "1791376789433_enable-realtime-tables",
-  "1791378678781_tighten-client-write-policies"
+  "1791378678781_tighten-client-write-policies",
+  "1791444188611_handle-new-user-oauth-name"
 ]

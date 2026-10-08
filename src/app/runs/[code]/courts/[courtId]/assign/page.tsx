@@ -277,7 +277,7 @@ export default function CourtAssignPage() {
         badge={
           isQueueMode && run ? (
             <span className="font-display text-[11px] font-bold tracking-[0.1em] uppercase text-accent bg-accent-glow border border-border-accent px-2.5 py-1 rounded-[4px]">
-              {run.rotationStyle === "winner_stays" ? "Winner stays" : "Rotate all - winners first, pairs kept"}
+              {run.rotationStyle === "winner_stays" ? "Winner stays" : "Stacking - winners first, pairs kept"}
             </span>
           ) : undefined
         }

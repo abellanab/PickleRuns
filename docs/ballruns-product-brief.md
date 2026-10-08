@@ -38,7 +38,7 @@ A host has at most one open (lobby or active) run at a time.
 Run
 ├── id, name, location
 ├── run mode (score only / queue only / score and queue)
-├── rotation style (rotate all / winner stays)
+├── rotation style (stacking / winner stays)
 ├── courts (1–8)
 ├── score goal (11 or 15)
 ├── win by two (on/off)
@@ -74,7 +74,7 @@ Every player must give a name.
 - **Score and queue** — both
 
 ### Rotation Styles
-- **Rotate all** — all four players go to the back of the queue, winners ahead of losers
+- **Stacking** — all four players go to the back of the queue, winners ahead of losers
 - **Winner stays** — only the losing side goes to the back; the winners keep their places
 
 Rotation is done by the database when a game completes, never by the app. Pairs that just played stay partners when they are drawn into the next game.

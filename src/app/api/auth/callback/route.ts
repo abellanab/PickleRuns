@@ -3,6 +3,17 @@ import { welcomeUserOnce } from "@/services/email.service";
 import { ensureHostRequest } from "@/services/host-request.service";
 import { NextResponse } from "next/server";
 
+function resolveDisplayName(
+  metadata: Record<string, unknown> | undefined,
+  email: string | undefined,
+): string {
+  for (const key of ["displayName", "full_name", "name"]) {
+    const value = metadata?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return (email ?? "").split("@")[0];
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
@@ -23,7 +34,7 @@ export async function GET(request: Request) {
           await welcomeUserOnce({
             userId: user.id,
             email: user.email,
-            displayName: (user.user_metadata?.displayName as string) ?? "",
+            displayName: resolveDisplayName(user.user_metadata, user.email),
           });
         } catch (err) {
           console.error("Welcome email failed", err);
@@ -33,8 +44,7 @@ export async function GET(request: Request) {
       // trigger-created, so the FK is satisfiable. Log-only, must not block redirect.
       if (user?.user_metadata?.hostIntent) {
         try {
-          const metaName = ((user.user_metadata?.displayName as string | undefined) ?? "").trim();
-          const hostName = (metaName || (user.email ?? "").split("@")[0] || "Host").slice(0, 50);
+          const hostName = (resolveDisplayName(user.user_metadata, user.email) || "Host").slice(0, 50);
           await ensureHostRequest(user.id, hostName);
         } catch (err) {
           console.error("Host request auto-create failed", err);
