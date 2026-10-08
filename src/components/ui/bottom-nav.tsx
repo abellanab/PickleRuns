@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, List, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePaymentQr } from "@/hooks/use-payment-qr";
 import { useRun } from "@/hooks/use-run";
 import { useSessionUser } from "@/hooks/use-session";
 
@@ -15,6 +16,8 @@ export function BottomNav() {
   const { data: run } = useRun(code);
   const { data: userId } = useSessionUser();
   const isHost = !!userId && !!run && userId === run.hostId;
+  const { data: paymentQr } = usePaymentQr(code);
+  const showPayment = isHost || !!paymentQr?.paymentQrUrl;
 
   const tabs = [
     {
@@ -33,7 +36,7 @@ export function BottomNav() {
           },
         ]
       : []),
-    ...(isHost
+    ...(showPayment
       ? [
           {
             href: `/runs/${code}/payment`,

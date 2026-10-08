@@ -10,6 +10,7 @@ export const users = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     welcomeSentAt: timestamp("welcome_sent_at", { withTimezone: true }),
     avatarUrl: text("avatar_url"),
+    paymentQrUrl: text("payment_qr_url"),
   },
   (t) => [
     index("idx_users_created_at").on(t.createdAt),

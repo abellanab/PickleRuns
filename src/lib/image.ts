@@ -73,3 +73,42 @@ export async function cropToSquareWebp(file: File, size = 512): Promise<Blob> {
     image.release();
   }
 }
+
+const MAX_QR_BYTES = 3 * 1024 * 1024;
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number) {
+  return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+}
+
+export async function downscaleImage(file: File, maxSide = 1200): Promise<Blob> {
+  if (file.size > MAX_AVATAR_INPUT_BYTES) {
+    throw new Error("That image is too large. Choose one under 10 MB.");
+  }
+
+  const image = await decode(file);
+  try {
+    if (image.width === 0 || image.height === 0) throw new Error(DECODE_ERROR);
+
+    const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error(DECODE_ERROR);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(image.source, 0, 0, width, height);
+
+    let blob = await canvasToBlob(canvas, "image/png");
+    if (blob && blob.size > MAX_QR_BYTES) {
+      blob = await canvasToBlob(canvas, "image/webp", 0.95);
+    }
+    if (!blob || blob.size === 0) throw new Error(DECODE_ERROR);
+    return blob;
+  } finally {
+    image.release();
+  }
+}
