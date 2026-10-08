@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
+import { HostTag } from "@/components/ui/host-tag";
 import { Button } from "@/components/ui/button";
 import type { CourtLastGame, CourtPlayer, CourtState, FillProposal } from "@/hooks/use-courts";
 import type { RunWire } from "@/types/api";
@@ -269,10 +270,11 @@ function RosterRow({ label, players }: { label: string; players: CourtPlayer[] }
           {players.map((p, i) => (
             <span key={p.entryId} className="flex items-center gap-1.5 min-w-0">
               {i > 0 && <span className="font-display text-[13px] text-text-muted">+</span>}
-              <Avatar name={p.displayName} src={p.avatarUrl} size="sm" />
+              <Avatar name={p.displayName} src={p.avatarUrl} size="sm" host={p.isHost} />
               <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary truncate">
                 {p.displayName}
               </span>
+              {p.isHost && <HostTag />}
             </span>
           ))}
         </div>
@@ -384,8 +386,9 @@ function ScoreColumn({
           className="min-h-[48px] w-full rounded-md border border-border bg-bg-hover px-3 flex items-center justify-between gap-2 font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary select-none touch-manipulation motion-safe:transition motion-safe:duration-150 active:scale-[0.97] active:brightness-125 active:ring-2 active:ring-accent"
         >
           <span className="flex items-center gap-2 min-w-0">
-            <Avatar name={p.displayName} src={p.avatarUrl} size="sm" />
+            <Avatar name={p.displayName} src={p.avatarUrl} size="sm" host={p.isHost} />
             <span className="truncate">{p.displayName}</span>
+            {p.isHost && <HostTag />}
           </span>
           <span className="text-[11px] text-accent flex-shrink-0">+1</span>
         </button>
@@ -413,10 +416,11 @@ function SideBlock({
           key={p.entryId}
           className={`flex items-center gap-1.5 min-w-0 max-w-full ${align === "right" ? "justify-end" : ""}`}
         >
-          <Avatar name={p.displayName} src={p.avatarUrl} size="sm" />
+          <Avatar name={p.displayName} src={p.avatarUrl} size="sm" host={p.isHost} />
           <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary truncate">
             {p.displayName}
           </span>
+          {p.isHost && <HostTag />}
         </span>
       ))}
     </div>

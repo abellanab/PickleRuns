@@ -1,7 +1,17 @@
 import { db } from "@/db";
-import { queueEntries, games, gamePlayers, courts, users } from "@/db/schema";
+import { queueEntries, games, gamePlayers, courts, users, runs } from "@/db/schema";
 import { eq, and, ne, sql, inArray, asc } from "drizzle-orm";
 import type { QueueEntry } from "@/types/db";
+
+export class AlreadyInQueueError extends Error {
+  constructor() {
+    super("You are already in this run");
+    this.name = "AlreadyInQueueError";
+  }
+}
+
+// Requires `runs` to be joined on queue_entries.run_id.
+export const isHostEntry = sql<boolean>`COALESCE(${queueEntries.userId} = ${runs.hostId}, false)`;
 
 export async function joinQueue(
   runId: string,
@@ -30,6 +40,39 @@ export async function joinQueue(
   });
 }
 
+export async function joinQueueAsHost(runId: string, hostId: string, displayName: string) {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${runId}), 2)`);
+
+    const [existing] = await tx
+      .select({ id: queueEntries.id })
+      .from(queueEntries)
+      .where(
+        and(
+          eq(queueEntries.runId, runId),
+          eq(queueEntries.userId, hostId),
+          ne(queueEntries.status, "removed"),
+        ),
+      )
+      .limit(1);
+    if (existing) throw new AlreadyInQueueError();
+
+    const [{ maxPos }] = await tx
+      .select({ maxPos: sql<number>`COALESCE(MAX(${queueEntries.position}), 0)` })
+      .from(queueEntries)
+      .where(eq(queueEntries.runId, runId));
+
+    const newPosition = (maxPos ?? 0) + 1;
+
+    const [entry] = await tx
+      .insert(queueEntries)
+      .values({ runId, userId: hostId, displayName, position: newPosition })
+      .returning();
+
+    return { entry, position: newPosition };
+  });
+}
+
 // games_played is not a column — it is derived per request from the count of
 // completed games each entry was rostered in (see below). Callers/UI read it
 // off this shape, not off the row.
@@ -37,6 +80,7 @@ export type QueueEntryWithGames = QueueEntry & {
   gamesPlayed: number;
   courtNumber: number | null;
   avatarUrl: string | null;
+  isHost: boolean;
 };
 
 export async function getQueueForRun(
@@ -44,8 +88,9 @@ export async function getQueueForRun(
 ): Promise<{ onCourt: QueueEntryWithGames[]; waiting: QueueEntryWithGames[] }> {
   const [allEntries, rostered] = await Promise.all([
     db
-      .select({ entry: queueEntries, avatarUrl: users.avatarUrl })
+      .select({ entry: queueEntries, avatarUrl: users.avatarUrl, isHost: isHostEntry })
       .from(queueEntries)
+      .innerJoin(runs, eq(runs.id, queueEntries.runId))
       .leftJoin(users, eq(users.id, queueEntries.userId))
       .where(and(eq(queueEntries.runId, runId), ne(queueEntries.status, "removed")))
       .orderBy(asc(queueEntries.position)),
@@ -92,11 +137,12 @@ export async function getQueueForRun(
     }
   }
 
-  const entries: QueueEntryWithGames[] = allEntries.map(({ entry, avatarUrl }) => ({
+  const entries: QueueEntryWithGames[] = allEntries.map(({ entry, avatarUrl, isHost }) => ({
     ...entry,
     gamesPlayed: gamesPlayedMap.get(entry.id) ?? 0,
     courtNumber: courtByEntryId.get(entry.id) ?? null,
     avatarUrl,
+    isHost,
   }));
 
   const onCourt = entries.filter((e) => courtByEntryId.has(e.id));

@@ -1,4 +1,9 @@
-export type Candidate = { entryId: string; displayName: string; avatarUrl: string | null };
+export type Candidate = {
+  entryId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isHost: boolean;
+};
 
 type Unit = { members: Candidate[] };
 

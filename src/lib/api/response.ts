@@ -34,6 +34,7 @@ import {
   AlreadyHostError,
   HostRequestPendingError,
 } from "@/services/host-request.service";
+import { AlreadyInQueueError } from "@/services/queue.service";
 import { ProfileNotFoundError } from "@/services/profile.service";
 import { InvalidAvatarError } from "@/lib/supabase/avatar-storage";
 import { InvalidPaymentQrError } from "@/lib/supabase/payment-qr-storage";
@@ -125,6 +126,9 @@ export function handleApiError(err: unknown): NextResponse<ApiResponse<never>> {
   }
   if (err instanceof HostRequestPendingError) {
     return apiError("HOST_REQUEST_PENDING", err.message, 409);
+  }
+  if (err instanceof AlreadyInQueueError) {
+    return apiError("ALREADY_IN_QUEUE", err.message, 409);
   }
   if (err instanceof ProfileNotFoundError) {
     return apiError("PROFILE_NOT_FOUND", err.message, 404);

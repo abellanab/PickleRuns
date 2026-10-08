@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { joinRunSchema } from "@/validators";
 import { getRunByCode, assertRunModeAllows } from "@/services/run.service";
-import { joinQueue, getQueueForRun } from "@/services/queue.service";
+import { joinQueue, joinQueueAsHost, getQueueForRun } from "@/services/queue.service";
 import { createClient } from "@/lib/supabase/server";
 import { apiSuccess, apiError, handleApiError } from "@/lib/api/response";
 
@@ -48,12 +48,13 @@ export async function POST(
   } = await supabase.auth.getUser();
   const userId = user?.id ?? null;
 
-  // host_add lets the host add an arbitrary player by name — only the host may do this
-  if (result.data.mode === "host_add" && userId !== run.hostId) {
+  // host_add / host_self are host-only; host_add players are guests (no user link)
+  const { mode, displayName } = result.data;
+  if ((mode === "host_add" || mode === "host_self") && userId !== run.hostId) {
     return apiError("FORBIDDEN", "Only the host can add players", 403);
   }
 
-  if (result.data.mode === "self_join") {
+  if (mode === "self_join") {
     try {
       assertRunModeAllows(run, "queue");
     } catch (err) {
@@ -61,7 +62,16 @@ export async function POST(
     }
   }
 
-  const { entry, position } = await joinQueue(run.id, result.data.displayName, userId);
+  let joined;
+  try {
+    joined =
+      mode === "host_self"
+        ? await joinQueueAsHost(run.id, run.hostId, displayName)
+        : await joinQueue(run.id, displayName, mode === "host_add" ? null : userId);
+  } catch (err) {
+    return handleApiError(err);
+  }
+  const { entry, position } = joined;
 
   return apiSuccess({ ...entry, position }, 201);
 }

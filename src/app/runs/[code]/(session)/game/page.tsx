@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { RotateCcw } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { HostTag } from "@/components/ui/host-tag";
 import { SessionTopbar } from "@/components/ui/session-topbar";
 import { useGameRealtime } from "@/hooks/use-game-realtime";
 import {
@@ -357,10 +358,11 @@ function SidePanel({
         const content = (
           <>
             <span className="flex items-center gap-2.5 min-w-0">
-              <Avatar name={player.displayName} src={player.avatarUrl} size="sm" />
+              <Avatar name={player.displayName} src={player.avatarUrl} size="sm" host={player.isHost} />
               <span className="font-display text-[18px] font-black tracking-[0.03em] uppercase text-text-primary leading-none truncate text-left">
                 {player.displayName}
               </span>
+              {player.isHost && <HostTag />}
             </span>
             <span className="flex items-baseline gap-1.5 flex-shrink-0">
               <span className="font-display text-[24px] font-black leading-none text-accent tabular-nums">

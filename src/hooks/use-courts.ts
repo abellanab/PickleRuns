@@ -4,7 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api/client";
 import type { GameData } from "@/hooks/use-game";
 
-export type CourtPlayer = { entryId: string; displayName: string; avatarUrl: string | null };
+export type CourtPlayer = {
+  entryId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isHost: boolean;
+};
 
 export type CourtGame = {
   id: string;

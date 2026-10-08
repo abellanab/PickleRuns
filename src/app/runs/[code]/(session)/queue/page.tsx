@@ -5,10 +5,13 @@ import { useParams } from "next/navigation";
 import { Ban, MoreVertical, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { HostTag } from "@/components/ui/host-tag";
 import { SessionTopbar } from "@/components/ui/session-topbar";
 import { useQueueRealtime } from "@/hooks/use-queue-realtime";
 import {
   useAddQueueEntryMutation,
+  useHostJoinAsPlayer,
   useQueue,
   useUpdateQueueStatusMutation,
   type QueueData,
@@ -58,6 +61,7 @@ export default function QueuePage() {
 
   const isHost = !!userId && !!run && userId === run.hostId;
   const canManageRun = isHost && run?.status !== "completed";
+  const hostJoin = useHostJoinAsPlayer(code, canManageRun);
 
   const onCourtCount = queue.onCourt.length;
   const waitingCount = queue.waiting.filter((e) => e.status === "waiting").length;
@@ -167,6 +171,27 @@ export default function QueuePage() {
       {/* SCROLLABLE BODY */}
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-24">
 
+        {!loading && canManageRun && hostJoin.visible && (
+          <div className="mx-5 mt-4 flex flex-col gap-2">
+            <Button
+              variant="secondary"
+              onClick={hostJoin.join}
+              disabled={hostJoin.pending || !hostJoin.displayName}
+              className="w-full min-h-[44px]"
+            >
+              {hostJoin.pending ? "Joining…" : "Join as player"}
+            </Button>
+            {!hostJoin.displayName && (
+              <p className="font-body text-[12px] text-text-muted text-center">
+                Set your name in Account to join the rotation.
+              </p>
+            )}
+            {hostJoin.error && (
+              <p className="font-body text-[13px] text-danger text-center">{hostJoin.error}</p>
+            )}
+          </div>
+        )}
+
         {/* ON COURT SECTION */}
         {!loading && onCourtCount > 0 && (
           <div className="animate-fade-up" style={{ animationDelay: "0.08s" }}>
@@ -187,10 +212,11 @@ export default function QueuePage() {
                   <span className="font-display text-[13px] font-extrabold text-accent-dim w-5 text-center flex-shrink-0">
                     {i + 1}
                   </span>
-                  <Avatar name={entry.displayName} src={entry.avatarUrl} size="sm" />
+                  <Avatar name={entry.displayName} src={entry.avatarUrl} size="sm" host={entry.isHost} />
                   <span className="font-display text-[16px] font-extrabold uppercase text-text-primary flex-1 truncate tracking-[0.02em]">
                     {entry.displayName}
                   </span>
+                  {entry.isHost && <HostTag />}
                   {entry.courtNumber !== null && (
                     <span className="font-display text-[11px] font-bold tracking-[0.08em] uppercase text-accent bg-accent-glow border border-border-accent px-2 py-0.5 rounded-sm whitespace-nowrap">
                       Court {entry.courtNumber}
@@ -229,12 +255,13 @@ export default function QueuePage() {
                     >
                       {i + 1}
                     </span>
-                    <Avatar name={entry.displayName} src={entry.avatarUrl} size="sm" />
+                    <Avatar name={entry.displayName} src={entry.avatarUrl} size="sm" host={entry.isHost} />
                     <span
                       className={`font-display text-[16px] font-extrabold uppercase text-text-primary flex-1 truncate tracking-[0.02em] ${entry.status === "marked_out" ? "line-through decoration-text-muted" : ""}`}
                     >
                       {entry.displayName}
                     </span>
+                    {entry.isHost && <HostTag />}
                     <span className="font-display text-[12px] font-semibold text-text-muted whitespace-nowrap">
                       {entry.gamesPlayed} {entry.gamesPlayed === 1 ? "game" : "games"}
                     </span>
