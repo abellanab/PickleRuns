@@ -14,6 +14,9 @@ import { useRunRealtime } from "@/hooks/use-run-realtime";
 import { winnerText } from "@/components/ui/game-breakdown";
 import {
   useAddCourtMutation,
+  isDuplicateScoreError,
+  useCourtScoreMutation,
+  useCourtUndoMutation,
   useCourts,
   useRemoveCourtMutation,
   type CourtState,
@@ -312,6 +315,8 @@ function CourtSlot({ code, court, run, isHost, canRemove }: CourtSlotProps) {
   const endMutation = useEndGameMutation(code, game?.id ?? "");
   const startMutation = useStartMatchMutation(code);
   const removeMutation = useRemoveCourtMutation(code);
+  const scoreMutation = useCourtScoreMutation(code, game?.id ?? "");
+  const undoMutation = useCourtUndoMutation(code, game?.id ?? "");
   const [askWinner, setAskWinner] = useState(false);
 
   const proposal = court.fillProposal;
@@ -342,6 +347,12 @@ function CourtSlot({ code, court, run, isHost, canRemove }: CourtSlotProps) {
     });
   }
 
+  const scoreFailure =
+    scoreMutation.isError && !isDuplicateScoreError(scoreMutation.error)
+      ? scoreMutation.error
+      : null;
+  const scoreError = scoreFailure?.message ?? (undoMutation.isError ? undoMutation.error.message : null);
+
   const endError =
     endMutation.isError &&
     !(endMutation.error instanceof ApiError && endMutation.error.code === "WINNER_REQUIRED")
@@ -363,6 +374,10 @@ function CourtSlot({ code, court, run, isHost, canRemove }: CourtSlotProps) {
       startError={startMutation.isError ? startMutation.error.message : null}
       removePending={removeMutation.isPending}
       removeError={removeMutation.isError ? removeMutation.error.message : null}
+      scoreError={scoreError}
+      undoPending={undoMutation.isPending}
+      onScorePlayer={(queueEntryId) => scoreMutation.mutate({ queueEntryId })}
+      onUndo={() => undoMutation.mutate()}
       onEndTap={handleEndTap}
       onPickWinner={endMatch}
       onCancelWinner={() => setAskWinner(false)}
