@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { HostTag } from "@/components/ui/host-tag";
 import { Button } from "@/components/ui/button";
@@ -83,38 +84,39 @@ export function CourtCard({
     >
       {game && <div className="h-[3px] bg-accent w-full" />}
       <div className="px-4 pt-3.5 pb-4 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <span className={labelClass}>{title}</span>
-          {game ? (
-            <span className="flex items-center gap-1.5 font-display text-[11px] font-bold tracking-[0.1em] uppercase text-[#3ddc84]">
-              <span className="w-[7px] h-[7px] rounded-full bg-[#3ddc84] animate-live-pulse" />
-              Live
-            </span>
-          ) : (
-            <span className="font-display text-[11px] font-bold tracking-[0.1em] uppercase text-text-muted">
-              Open
-            </span>
-          )}
-        </div>
-
         {game ? (
           <>
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-              <SideBlock label="Side A" players={game.sideA} />
-              <div className="flex flex-col items-center gap-1">
-                {showScore ? (
-                  <>
-                    <span className="font-display text-[30px] font-black tabular-nums text-text-primary leading-none whitespace-nowrap">
-                      {game.scoreA} – {game.scoreB}
-                    </span>
-                    <span className={labelClass}>to {game.scoreGoal}</span>
-                  </>
-                ) : (
-                  <span className={labelClass}>In play</span>
-                )}
+            <LiveArea href={showScore ? `/runs/${code}/game?gameId=${game.id}&from=lobby` : null}>
+              <div className="flex items-center justify-between">
+                <span className={labelClass}>{title}</span>
+                <span className="flex items-center gap-1.5 font-display text-[11px] font-bold tracking-[0.1em] uppercase text-[#3ddc84]">
+                  <span className="w-[7px] h-[7px] rounded-full bg-[#3ddc84] animate-live-pulse" />
+                  Live
+                </span>
               </div>
-              <SideBlock label="Side B" players={game.sideB} align="right" />
-            </div>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                <SideBlock label="Side A" players={game.sideA} />
+                <div className="flex flex-col items-center gap-1">
+                  {showScore ? (
+                    <>
+                      <span className="font-display text-[30px] font-black tabular-nums text-text-primary leading-none whitespace-nowrap">
+                        {game.scoreA} – {game.scoreB}
+                      </span>
+                      <span className={labelClass}>to {game.scoreGoal}</span>
+                    </>
+                  ) : (
+                    <span className={labelClass}>In play</span>
+                  )}
+                </div>
+                <SideBlock label="Side B" players={game.sideB} align="right" />
+              </div>
+              {showScore && (
+                <span className="flex items-center justify-center gap-0.5 font-display text-[12px] font-extrabold tracking-[0.12em] uppercase text-accent">
+                  Watch live
+                  <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                </span>
+              )}
+            </LiveArea>
 
             {canTapScore && !askWinner && (
               <div className="grid grid-cols-2 gap-2">
@@ -124,15 +126,7 @@ export function CourtCard({
             )}
 
             {isHost && !askWinner && (
-              <div className={`grid gap-2 ${showScore ? "grid-cols-3" : "grid-cols-1"}`}>
-                {showScore && (
-                  <Link
-                    href={`/runs/${code}/game?gameId=${game.id}`}
-                    className="min-h-[44px] rounded-md border border-border-accent bg-accent-glow text-accent font-display text-[13px] font-extrabold tracking-[0.12em] uppercase flex items-center justify-center active:scale-[0.98]"
-                  >
-                    Scoreboard
-                  </Link>
-                )}
+              <div className={`grid gap-2 ${showScore ? "grid-cols-2" : "grid-cols-1"}`}>
                 {showScore && (
                   <Button
                     variant="secondary"
@@ -191,6 +185,12 @@ export function CourtCard({
           </>
         ) : (
           <>
+            <div className="flex items-center justify-between">
+              <span className={labelClass}>{title}</span>
+              <span className="font-display text-[11px] font-bold tracking-[0.1em] uppercase text-text-muted">
+                Open
+              </span>
+            </div>
             {court.lastGame ? (
               <LastMatch last={court.lastGame} showScore={showScore} />
             ) : (
@@ -258,6 +258,18 @@ export function CourtCard({
         )}
       </div>
     </div>
+  );
+}
+
+function LiveArea({ href, children }: { href: string | null; children: ReactNode }) {
+  if (!href) return <div className="flex flex-col gap-3">{children}</div>;
+  return (
+    <Link
+      href={href}
+      className="-mx-2 -my-1 px-2 py-1 min-h-[44px] rounded-md flex flex-col gap-3 active:bg-accent-glow"
+    >
+      {children}
+    </Link>
   );
 }
 
