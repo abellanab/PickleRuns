@@ -22,6 +22,10 @@ interface CourtCardProps {
   startError: string | null;
   removePending: boolean;
   removeError: string | null;
+  scoreError: string | null;
+  undoPending: boolean;
+  onScorePlayer: (entryId: string) => void;
+  onUndo: () => void;
   onEndTap: () => void;
   onPickWinner: (winner: Winner) => void;
   onCancelWinner: () => void;
@@ -53,6 +57,10 @@ export function CourtCard({
   startError,
   removePending,
   removeError,
+  scoreError,
+  undoPending,
+  onScorePlayer,
+  onUndo,
   onEndTap,
   onPickWinner,
   onCancelWinner,
@@ -64,6 +72,7 @@ export function CourtCard({
   const title = court.name ?? `Court ${court.number}`;
   const showScore = runMode !== "queue_only";
   const isQueueMode = runMode !== "score_only";
+  const canTapScore = isHost && showScore;
   const assignHref = `/runs/${code}/courts/${court.id}/assign`;
 
   return (
@@ -105,15 +114,33 @@ export function CourtCard({
               <SideBlock label="Side B" players={game.sideB.map((p) => p.displayName)} align="right" />
             </div>
 
+            {canTapScore && !askWinner && (
+              <div className="grid grid-cols-2 gap-2">
+                <ScoreColumn label="Side A" players={game.sideA} onScore={onScorePlayer} />
+                <ScoreColumn label="Side B" players={game.sideB} onScore={onScorePlayer} />
+              </div>
+            )}
+
             {isHost && !askWinner && (
-              <div className={`grid gap-2 ${showScore ? "grid-cols-2" : "grid-cols-1"}`}>
+              <div className={`grid gap-2 ${showScore ? "grid-cols-3" : "grid-cols-1"}`}>
                 {showScore && (
                   <Link
                     href={`/runs/${code}/game?gameId=${game.id}`}
                     className="min-h-[44px] rounded-md border border-border-accent bg-accent-glow text-accent font-display text-[13px] font-extrabold tracking-[0.12em] uppercase flex items-center justify-center active:scale-[0.98]"
                   >
-                    Score
+                    Scoreboard
                   </Link>
+                )}
+                {showScore && (
+                  <Button
+                    variant="secondary"
+                    onClick={onUndo}
+                    disabled={undoPending}
+                    aria-label={`Undo last point on Court ${court.number}`}
+                    className="w-full min-h-[44px]"
+                  >
+                    Undo
+                  </Button>
                 )}
                 <Button
                   variant="secondary"
@@ -157,6 +184,7 @@ export function CourtCard({
               </div>
             )}
 
+            {scoreError && <p className={errorClass}>{scoreError}</p>}
             {endError && <p className={errorClass}>{endError}</p>}
           </>
         ) : (
@@ -322,6 +350,34 @@ function LastMatch({ last, showScore }: { last: CourtLastGame; showScore: boolea
       <span className="font-body text-[12px] text-text-muted">
         {names(last.sideA)} vs {names(last.sideB)}
       </span>
+    </div>
+  );
+}
+
+function ScoreColumn({
+  label,
+  players,
+  onScore,
+}: {
+  label: string;
+  players: CourtPlayer[];
+  onScore: (entryId: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 min-w-0">
+      <span className={labelClass}>{label}</span>
+      {players.map((p) => (
+        <button
+          key={p.entryId}
+          type="button"
+          onClick={() => onScore(p.entryId)}
+          aria-label={`Score a point for ${p.displayName}`}
+          className="min-h-[48px] w-full rounded-md border border-border bg-bg-hover px-3 flex items-center justify-between gap-2 font-display text-[13px] font-extrabold uppercase tracking-[0.03em] text-text-primary select-none touch-manipulation motion-safe:transition motion-safe:duration-150 active:scale-[0.97] active:brightness-125 active:ring-2 active:ring-accent"
+        >
+          <span className="truncate">{p.displayName}</span>
+          <span className="text-[11px] text-accent flex-shrink-0">+1</span>
+        </button>
+      ))}
     </div>
   );
 }
