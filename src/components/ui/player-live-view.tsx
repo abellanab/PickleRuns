@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCourts, type CourtGame } from "@/hooks/use-courts";
 import { useQueue } from "@/hooks/use-queue";
@@ -206,9 +207,19 @@ export function PlayerLiveView({
         </section>
       )}
 
-      <div className="mt-8 grid grid-cols-2 gap-2.5">
-        <FooterLink href={`/runs/${runCode}/lobby`}>All courts</FooterLink>
-        <FooterLink href={`/runs/${runCode}/queue`}>Queue</FooterLink>
+      <div className="mt-8 flex gap-2.5">
+        <FooterLink href={`/runs/${runCode}/lobby`}>
+          <span className="truncate">All courts</span>
+        </FooterLink>
+        {showQueue && (
+          <FooterLink href={`/runs/${runCode}/queue`}>
+            <span className="truncate">Queue</span>
+          </FooterLink>
+        )}
+        <FooterLink href={`/runs/${runCode}/payment`}>
+          <Wallet className="w-4 h-4 shrink-0" />
+          <span className="truncate">Payment</span>
+        </FooterLink>
       </div>
     </div>
   );
@@ -301,7 +312,7 @@ function FooterLink({ href, children }: { href: string; children: React.ReactNod
   return (
     <Link
       href={href}
-      className="min-h-[44px] rounded-md border border-border bg-bg-surface text-text-secondary font-display text-[13px] font-bold tracking-[0.08em] uppercase flex items-center justify-center active:bg-bg-hover"
+      className="min-h-[44px] min-w-0 flex-1 px-2 rounded-md border border-border bg-bg-surface text-text-secondary font-display text-[13px] font-bold tracking-[0.08em] uppercase flex items-center justify-center gap-1.5 active:bg-bg-hover"
     >
       {children}
     </Link>
