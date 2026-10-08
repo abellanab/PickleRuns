@@ -20,7 +20,7 @@ import {
 import { useRun } from "@/hooks/use-run";
 import { useSessionUser } from "@/hooks/use-session";
 import { ApiError } from "@/lib/api/client";
-import { downscaleImage } from "@/lib/image";
+import { cropToQr } from "@/lib/image";
 
 const EMPTY_QUEUE: QueueData = { onCourt: [], waiting: [] };
 
@@ -220,6 +220,7 @@ function HostPaymentQrCard({ code, url }: { code: string; url: string | null }) 
   const inputRef = useRef<HTMLInputElement>(null);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const upload = useUploadPaymentQrMutation(code);
   const remove = useRemovePaymentQrMutation(code);
@@ -228,10 +229,16 @@ function HostPaymentQrCard({ code, url }: { code: string; url: string | null }) 
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setError(null);
+    setNotice(null);
     setPreparing(true);
     try {
-      const image = await downscaleImage(file);
-      await upload.mutateAsync(image);
+      const { blob, cropped } = await cropToQr(file);
+      await upload.mutateAsync(blob);
+      setNotice(
+        cropped
+          ? "Cropped to the QR code."
+          : "Couldn't find a QR code in that image, so the full picture was uploaded.",
+      );
     } catch (err) {
       setError(qrErrorMessage(err));
     } finally {
@@ -241,6 +248,7 @@ function HostPaymentQrCard({ code, url }: { code: string; url: string | null }) 
 
   async function handleRemove() {
     setError(null);
+    setNotice(null);
     setConfirming(false);
     try {
       await remove.mutateAsync();
@@ -310,6 +318,11 @@ function HostPaymentQrCard({ code, url }: { code: string; url: string | null }) 
         >
           {busy ? "Uploading..." : "Upload QR"}
         </button>
+      )}
+      {notice && !error && (
+        <p role="status" className="font-body text-[12px] text-text-muted self-start">
+          {notice}
+        </p>
       )}
       {error && (
         <p role="alert" className="font-body text-[12px] text-danger self-start">

@@ -16,6 +16,8 @@ export function usePaymentQr(code: string) {
     enabled: !!code,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 
