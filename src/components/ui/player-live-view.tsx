@@ -6,9 +6,12 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useCourts, type CourtGame } from "@/hooks/use-courts";
 import { useQueue } from "@/hooks/use-queue";
+import { usePaymentQr } from "@/hooks/use-payment-qr";
 import { useRun } from "@/hooks/use-run";
 import { useRunRealtime } from "@/hooks/use-run-realtime";
+import { useSessionUser } from "@/hooks/use-session";
 import { Avatar } from "@/components/ui/avatar";
+import { PaymentQrCard } from "@/components/ui/payment-qr-card";
 import { LiveScoreRow } from "@/components/ui/live-score-row";
 import { getQueueNumber } from "@/components/ui/player-status-banner";
 
@@ -35,6 +38,8 @@ export function PlayerLiveView({
   const queueQuery = useQueue(runCode);
   const courtsQuery = useCourts(runCode);
   const run = runQuery.data;
+  const sessionQuery = useSessionUser();
+  const paymentQrUrl = usePaymentQr(runCode).data?.paymentQrUrl ?? null;
   useRunRealtime(run?.id ?? null, runCode);
 
   const queue = queueQuery.data;
@@ -79,6 +84,7 @@ export function PlayerLiveView({
   const waitingEntries = queue.waiting.filter((e) => e.status !== "removed");
   const showScores = run.runMode !== "queue_only";
   const showQueue = run.runMode !== "score_only";
+  const isHost = !!sessionQuery.data && sessionQuery.data === run.hostId;
   const name = displayName ?? myCourtEntry?.displayName ?? myWaiting?.displayName ?? null;
 
   let waitingNumber = 0;
@@ -173,6 +179,26 @@ export function PlayerLiveView({
               );
             })
           )}
+        </section>
+      )}
+
+      {paymentQrUrl && !isHost && (
+        <section className="mt-8 rounded-md border border-border bg-bg-surface p-3 flex items-center gap-3">
+          <PaymentQrCard url={paymentQrUrl} compact />
+          <div className="min-w-0 flex-1 flex flex-col gap-1.5">
+            <div className="flex flex-col">
+              <span className="font-display text-[14px] font-black tracking-[0.04em] uppercase text-text-primary">
+                Pay the host
+              </span>
+              <span className="font-body text-[12px] text-text-muted">Tap to show the QR</span>
+            </div>
+            <Link
+              href={`/runs/${runCode}/payment`}
+              className="min-h-[44px] rounded-md border border-border bg-bg-raised text-text-secondary font-display text-[12px] font-bold tracking-[0.08em] uppercase flex items-center justify-center active:bg-bg-hover"
+            >
+              Open payment page
+            </Link>
+          </div>
         </section>
       )}
 

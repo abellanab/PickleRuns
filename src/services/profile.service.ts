@@ -10,10 +10,16 @@ export class ProfileNotFoundError extends Error {
 }
 
 export type Profile = { id: string; displayName: string; avatarUrl: string | null };
+export type FullProfile = Profile & { paymentQrUrl: string | null };
 
-export async function getProfile(userId: string): Promise<Profile> {
+export async function getProfile(userId: string): Promise<FullProfile> {
   const [row] = await db
-    .select({ id: users.id, displayName: users.displayName, avatarUrl: users.avatarUrl })
+    .select({
+      id: users.id,
+      displayName: users.displayName,
+      avatarUrl: users.avatarUrl,
+      paymentQrUrl: users.paymentQrUrl,
+    })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
@@ -55,4 +61,23 @@ export async function setAvatarUrl(userId: string, avatarUrl: string | null): Pr
     .where(eq(users.id, userId))
     .returning({ id: users.id });
   if (updated.length === 0) throw new ProfileNotFoundError();
+}
+
+export async function setPaymentQrUrl(userId: string, paymentQrUrl: string | null): Promise<void> {
+  const updated = await db
+    .update(users)
+    .set({ paymentQrUrl, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning({ id: users.id });
+  if (updated.length === 0) throw new ProfileNotFoundError();
+}
+
+export async function getPaymentQrForRun(runId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ paymentQrUrl: users.paymentQrUrl })
+    .from(runs)
+    .innerJoin(users, eq(users.id, runs.hostId))
+    .where(eq(runs.id, runId))
+    .limit(1);
+  return row?.paymentQrUrl ?? null;
 }

@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useCallback, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { PaymentQrCard } from "@/components/ui/payment-qr-card";
 import { SessionTopbar } from "@/components/ui/session-topbar";
+import {
+  usePaymentQr,
+  useRemovePaymentQrMutation,
+  useUploadPaymentQrMutation,
+} from "@/hooks/use-payment-qr";
 import { useQueueRealtime } from "@/hooks/use-queue-realtime";
 import {
   useQueue,
@@ -13,12 +19,13 @@ import {
 } from "@/hooks/use-queue";
 import { useRun } from "@/hooks/use-run";
 import { useSessionUser } from "@/hooks/use-session";
+import { ApiError } from "@/lib/api/client";
+import { downscaleImage } from "@/lib/image";
 
 const EMPTY_QUEUE: QueueData = { onCourt: [], waiting: [] };
 
 export default function PaymentPage() {
   const { code } = useParams<{ code: string }>();
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   const runQuery = useRun(code);
@@ -32,13 +39,6 @@ export default function PaymentPage() {
 
   const isHost = !!userId && !!run && userId === run.hostId;
 
-  // Payment is host-only. Anyone else who deep-links to this URL is bounced to
-  // the lobby — replace so back doesn't loop them straight back here.
-  useEffect(() => {
-    if (loading) return;
-    if (!isHost) router.replace(`/runs/${code}/lobby`);
-  }, [loading, isHost, router, code]);
-
   const [mutating, setMutating] = useState<Set<string>>(new Set());
   const lastTapRef = useRef<Record<string, number>>({});
 
@@ -46,9 +46,11 @@ export default function PaymentPage() {
     queryClient.invalidateQueries({ queryKey: ["queue", code] });
   }, [queryClient, code]);
 
-  useQueueRealtime(run?.id ?? null, invalidateQueue);
+  useQueueRealtime(isHost ? (run?.id ?? null) : null, invalidateQueue);
 
   const paidMutation = useUpdateQueuePaidMutation(code);
+  const paymentQrQuery = usePaymentQr(code);
+  const paymentQrUrl = paymentQrQuery.data?.paymentQrUrl ?? null;
 
   const allPlayers = [...queue.onCourt, ...queue.waiting];
   const paidCount = allPlayers.filter((e) => e.paid).length;
@@ -86,9 +88,28 @@ export default function PaymentPage() {
     }
   }
 
+  if (!loading && !isHost) {
+    return (
+      <>
+        <SessionTopbar run={run} loading={false} backHref={`/runs/${code}/lobby`} showEndRun={false} liveGameWarning={false} />
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 pt-5 pb-8">
+          {paymentQrUrl ? (
+            <PaymentQrCard url={paymentQrUrl} caption="Scan to pay the host" />
+          ) : (
+            <p className="font-body text-[13px] text-text-muted text-center">
+              {paymentQrQuery.isPending ? "Loading..." : "The host hasn't added a payment QR yet."}
+            </p>
+          )}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <SessionTopbar run={run} loading={loading} backHref={`/runs/${code}/lobby`} showEndRun={isHost && run?.status !== "completed"} liveGameWarning={queue.onCourt.length > 0} />
+
+      {!loading && isHost && <HostPaymentQrCard code={code} url={paymentQrUrl} />}
 
       {/* STATS STRIP */}
       {!loading && isHost && (
@@ -182,5 +203,119 @@ export default function PaymentPage() {
         )}
       </div>
     </>
+  );
+}
+
+const qrButtonClass =
+  "min-h-[48px] rounded-md border border-border bg-bg-surface text-text-primary font-display text-[13px] font-bold tracking-[0.08em] uppercase px-4 active:bg-bg-hover disabled:opacity-50";
+
+function qrErrorMessage(err: unknown): string {
+  if (err instanceof ApiError && (err.code === "INVALID_PAYMENT_QR" || err.code === "HOST_NOT_APPROVED")) {
+    return err.message;
+  }
+  return err instanceof Error ? err.message : "Something went wrong. Try again.";
+}
+
+function HostPaymentQrCard({ code, url }: { code: string; url: string | null }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const upload = useUploadPaymentQrMutation(code);
+  const remove = useRemovePaymentQrMutation(code);
+  const busy = preparing || upload.isPending || remove.isPending;
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    setError(null);
+    setPreparing(true);
+    try {
+      const image = await downscaleImage(file);
+      await upload.mutateAsync(image);
+    } catch (err) {
+      setError(qrErrorMessage(err));
+    } finally {
+      setPreparing(false);
+    }
+  }
+
+  async function handleRemove() {
+    setError(null);
+    setConfirming(false);
+    try {
+      await remove.mutateAsync();
+    } catch (err) {
+      setError(qrErrorMessage(err));
+    }
+  }
+
+  return (
+    <div className="bg-bg-surface border border-border rounded-md mx-5 mt-3.5 p-4 flex flex-col items-center gap-3 animate-fade-up">
+      <span className="font-display text-[12px] font-bold tracking-[0.14em] uppercase text-text-muted self-start">
+        Payment QR
+      </span>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          void handleFile(file);
+        }}
+      />
+      {url ? (
+        <>
+          <PaymentQrCard url={url} />
+          {confirming ? (
+            <div className="w-full flex items-center gap-2">
+              <span className="flex-1 font-display text-[13px] font-bold uppercase text-text-primary">
+                Remove QR?
+              </span>
+              <button type="button" onClick={() => setConfirming(false)} className={qrButtonClass}>
+                No
+              </button>
+              <button type="button" onClick={() => void handleRemove()} className={qrButtonClass}>
+                Yes
+              </button>
+            </div>
+          ) : (
+            <div className="w-full grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => inputRef.current?.click()}
+                className={qrButtonClass}
+              >
+                {busy ? "Working..." : "Replace"}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setConfirming(true)}
+                className={qrButtonClass}
+              >
+                Remove
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+          className={`${qrButtonClass} w-full`}
+        >
+          {busy ? "Uploading..." : "Upload QR"}
+        </button>
+      )}
+      {error && (
+        <p role="alert" className="font-body text-[12px] text-danger self-start">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

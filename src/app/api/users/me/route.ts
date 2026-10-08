@@ -16,10 +16,12 @@ export async function GET(): Promise<Response> {
 
     let displayName = (user.user_metadata?.displayName as string | undefined) ?? null;
     let avatarUrl: string | null = null;
+    let paymentQrUrl: string | null = null;
     try {
       const profile = await getProfile(user.id);
       displayName = profile.displayName;
       avatarUrl = profile.avatarUrl;
+      paymentQrUrl = profile.paymentQrUrl;
     } catch (err) {
       if (!(err instanceof ProfileNotFoundError)) throw err;
     }
@@ -29,6 +31,7 @@ export async function GET(): Promise<Response> {
       email: user.email ?? null,
       displayName,
       avatarUrl,
+      paymentQrUrl,
       hostStatus: await getHostStatus(user.id),
     });
   } catch (err) {
