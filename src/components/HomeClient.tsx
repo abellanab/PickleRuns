@@ -501,7 +501,7 @@ export default function HomeClient({ initialUser }: HomeClientProps) {
               </div>
               <div className="flex flex-col gap-3">
                 <span className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-text-muted">Company</span>
-                {["About", "Contact", "Privacy"].map((item) => (
+                {["About", "Contact"].map((item) => (
                   <button
                     key={item}
                     type="button"
@@ -510,6 +510,18 @@ export default function HomeClient({ initialUser }: HomeClientProps) {
                     {item}
                   </button>
                 ))}
+                <Link
+                  href="/privacy"
+                  className="w-fit font-display text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary transition-colors hover:text-text-primary"
+                >
+                  Privacy
+                </Link>
+                <Link
+                  href="/terms"
+                  className="w-fit font-display text-[13px] font-bold uppercase tracking-[0.04em] text-text-secondary transition-colors hover:text-text-primary"
+                >
+                  Terms
+                </Link>
               </div>
             </div>
           </div>
