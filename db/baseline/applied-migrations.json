@@ -28,5 +28,9 @@
   "1791376570774_rotation-winners-first",
   "1791376789433_enable-realtime-tables",
   "1791378678781_tighten-client-write-policies",
-  "1791444188611_handle-new-user-oauth-name"
+  "1791444188611_handle-new-user-oauth-name",
+  "1791450155292_player-profile-avatars",
+  "1791450662030_host-payment-qr",
+  "1791450949312_unlink-host-added-entries",
+  "1795792365831_host-request-email"
 ]

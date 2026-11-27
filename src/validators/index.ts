@@ -24,7 +24,10 @@ export {
 
 export {
   createHostRequestSchema,
+  decisionTokenQuerySchema,
+  decideHostRequestSchema,
   type CreateHostRequestInput,
+  type DecideHostRequestInput,
 } from "./host-request.validator";
 
 export {

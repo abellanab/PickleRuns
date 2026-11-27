@@ -18,6 +18,12 @@ const mailSchema = z.object({
   RESEND_FROM_EMAIL: z.string().min(1),
 });
 
+const hostRequestSchema = z.object({
+  HOST_REQUEST_ADMIN_EMAIL: z.string().email(),
+  HOST_REQUEST_DECISION_SECRET: z.string().min(32),
+  APP_URL: z.string().url(),
+});
+
 const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
@@ -25,10 +31,12 @@ const clientSchema = z.object({
 
 type ServerEnv = z.infer<typeof serverSchema>;
 type MailEnv = z.infer<typeof mailSchema>;
+type HostRequestEnv = z.infer<typeof hostRequestSchema>;
 type ClientEnv = z.infer<typeof clientSchema>;
 
 let cachedServer: ServerEnv | undefined;
 let cachedMail: MailEnv | undefined;
+let cachedHostRequest: HostRequestEnv | undefined;
 let cachedClient: ClientEnv | undefined;
 
 function readServer(): ServerEnv {
@@ -59,6 +67,23 @@ function readMail(): MailEnv {
   }
   cachedMail = parsed.data;
   return cachedMail;
+}
+
+// Separate from readMail so welcome emails keep working when these are unset.
+function readHostRequest(): HostRequestEnv {
+  if (cachedHostRequest) return cachedHostRequest;
+  const parsed = hostRequestSchema.safeParse({
+    HOST_REQUEST_ADMIN_EMAIL: process.env.HOST_REQUEST_ADMIN_EMAIL,
+    HOST_REQUEST_DECISION_SECRET: process.env.HOST_REQUEST_DECISION_SECRET,
+    APP_URL: process.env.APP_URL,
+  });
+  if (!parsed.success) {
+    throw new Error(
+      `Invalid host request env: ${JSON.stringify(parsed.error.flatten().fieldErrors)}`,
+    );
+  }
+  cachedHostRequest = parsed.data;
+  return cachedHostRequest;
 }
 
 function readClient(): ClientEnv {
@@ -95,5 +120,14 @@ export const env = {
   },
   get RESEND_FROM_EMAIL(): string {
     return readMail().RESEND_FROM_EMAIL;
+  },
+  get HOST_REQUEST_ADMIN_EMAIL(): string {
+    return readHostRequest().HOST_REQUEST_ADMIN_EMAIL;
+  },
+  get HOST_REQUEST_DECISION_SECRET(): string {
+    return readHostRequest().HOST_REQUEST_DECISION_SECRET;
+  },
+  get APP_URL(): string {
+    return readHostRequest().APP_URL;
   },
 };

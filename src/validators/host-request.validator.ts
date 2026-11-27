@@ -5,3 +5,14 @@ export const createHostRequestSchema = z.object({
 });
 
 export type CreateHostRequestInput = z.infer<typeof createHostRequestSchema>;
+
+export const decisionTokenQuerySchema = z.object({
+  token: z.string().min(1).max(1024),
+});
+
+export const decideHostRequestSchema = z.object({
+  token: z.string().min(1).max(1024),
+  decision: z.enum(["approved", "denied"]),
+});
+
+export type DecideHostRequestInput = z.infer<typeof decideHostRequestSchema>;

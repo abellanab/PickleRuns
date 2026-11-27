@@ -39,7 +39,7 @@ export async function GET(request: Request) {
         try {
           const metaName = ((user.user_metadata?.displayName as string | undefined) ?? "").trim();
           const hostName = (metaName || (user.email ?? "").split("@")[0] || "Host").slice(0, 50);
-          await ensureHostRequest(user.id, hostName);
+          await ensureHostRequest(user.id, hostName, user.email ?? null);
         } catch (err) {
           console.error("Host request auto-create failed", err);
         }

@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       if (user?.user_metadata?.hostIntent) {
         try {
           const hostName = (resolveDisplayName(user.user_metadata, user.email) || "Host").slice(0, 50);
-          await ensureHostRequest(user.id, hostName);
+          await ensureHostRequest(user.id, hostName, user.email ?? null);
         } catch (err) {
           console.error("Host request auto-create failed", err);
         }

@@ -33,6 +33,8 @@ import {
   HostNotApprovedError,
   AlreadyHostError,
   HostRequestPendingError,
+  HostRequestNotFoundError,
+  HostRequestAlreadyDecidedError,
 } from "@/services/host-request.service";
 import { AlreadyInQueueError } from "@/services/queue.service";
 import { ProfileNotFoundError } from "@/services/profile.service";
@@ -126,6 +128,12 @@ export function handleApiError(err: unknown): NextResponse<ApiResponse<never>> {
   }
   if (err instanceof HostRequestPendingError) {
     return apiError("HOST_REQUEST_PENDING", err.message, 409);
+  }
+  if (err instanceof HostRequestNotFoundError) {
+    return apiError("HOST_REQUEST_NOT_FOUND", err.message, 404);
+  }
+  if (err instanceof HostRequestAlreadyDecidedError) {
+    return apiError("HOST_REQUEST_ALREADY_DECIDED", err.message, 409);
   }
   if (err instanceof AlreadyInQueueError) {
     return apiError("ALREADY_IN_QUEUE", err.message, 409);

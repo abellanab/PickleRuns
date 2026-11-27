@@ -26,7 +26,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const created = await createHostRequest(user.id, parsed.data.displayName);
+    const created = await createHostRequest(
+      user.id,
+      parsed.data.displayName,
+      user.email ?? null,
+    );
     return apiSuccess(created, 201);
   } catch (e) {
     return handleApiError(e);
