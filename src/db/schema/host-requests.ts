@@ -10,6 +10,7 @@ export const hostRequests = pgTable(
     status: hostRequestStatus("status").notNull().default("pending"),
     displayName: text("display_name").notNull(),
     note: text("note"),
+    email: text("email"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
   },
