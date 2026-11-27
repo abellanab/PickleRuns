@@ -58,7 +58,9 @@ export async function sendHostRequestAdminEmail({
   });
 
   if (error) {
-    throw new Error(`Host request admin email failed: ${error.message}`);
+    const from = env.RESEND_FROM_EMAIL;
+    const hint = `from: len=${from.length}, has@=${from.includes("@")}, hasAngle=${/[<>]/.test(from)}, quoted=${/["']/.test(from)}`;
+    throw new Error(`Host request admin email failed: ${error.message} (${hint})`);
   }
 }
 

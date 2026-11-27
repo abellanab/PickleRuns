@@ -55,12 +55,23 @@ function readServer(): ServerEnv {
   return cachedServer;
 }
 
+// Hosting dashboards often store pasted values with trailing newlines or wrapping quotes.
+function clean(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  const trimmed = value.trim();
+  const first = trimmed[0];
+  if (trimmed.length >= 2 && (first === '"' || first === "'") && trimmed.endsWith(first)) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
 // Separate from readServer so missing mail vars never break DB/auth call sites.
 function readMail(): MailEnv {
   if (cachedMail) return cachedMail;
   const parsed = mailSchema.safeParse({
-    RESEND_API_KEY: process.env.RESEND_API_KEY,
-    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+    RESEND_API_KEY: clean(process.env.RESEND_API_KEY),
+    RESEND_FROM_EMAIL: clean(process.env.RESEND_FROM_EMAIL),
   });
   if (!parsed.success) {
     throw new Error(`Invalid mail env: ${JSON.stringify(parsed.error.flatten().fieldErrors)}`);
@@ -73,9 +84,9 @@ function readMail(): MailEnv {
 function readHostRequest(): HostRequestEnv {
   if (cachedHostRequest) return cachedHostRequest;
   const parsed = hostRequestSchema.safeParse({
-    HOST_REQUEST_ADMIN_EMAIL: process.env.HOST_REQUEST_ADMIN_EMAIL,
-    HOST_REQUEST_DECISION_SECRET: process.env.HOST_REQUEST_DECISION_SECRET,
-    APP_URL: process.env.APP_URL,
+    HOST_REQUEST_ADMIN_EMAIL: clean(process.env.HOST_REQUEST_ADMIN_EMAIL),
+    HOST_REQUEST_DECISION_SECRET: clean(process.env.HOST_REQUEST_DECISION_SECRET),
+    APP_URL: clean(process.env.APP_URL),
   });
   if (!parsed.success) {
     throw new Error(
